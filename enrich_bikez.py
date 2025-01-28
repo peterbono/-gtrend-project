@@ -1,8 +1,13 @@
+import os
 import warnings
 from pytrends.request import TrendReq
 import json
 import time
 import logging
+from flask import Flask
+
+# Initialiser Flask pour Render
+app = Flask(__name__)
 
 # Configurer les logs
 logging.basicConfig(
@@ -115,10 +120,17 @@ def main():
 
     logging.info("Traitement terminé.")
 
-if __name__ == "__main__":
+@app.route("/")
+def run_main():
     try:
         main()
+        return "Script exécuté avec succès.", 200
     except Exception as e:
         logging.error(f"Erreur fatale: {e}")
+        return f"Erreur lors de l'exécution : {e}", 500
     finally:
         logging.info("Script terminé.")
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 8000))  # Utilisation de la variable d'environnement PORT
+    app.run(host="0.0.0.0", port=port)
