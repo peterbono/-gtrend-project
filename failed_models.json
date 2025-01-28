@@ -1,0 +1,2422 @@
+[
+    {
+        "Brand": "adly",
+        "Model": "road tracer 50",
+        "Year": 2007,
+        "Category": "Cross / motocross",
+        "Displacement": 49.3,
+        "Power": null,
+        "DryWeight": 75.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "adly",
+        "Model": "silver fox 50",
+        "Year": 2007,
+        "Category": "Scooter",
+        "Displacement": 49.3,
+        "Power": 3.7,
+        "DryWeight": 75.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "aeon",
+        "Model": "3d-350 r",
+        "Year": 2019,
+        "Category": "Scooter",
+        "Displacement": 346.0,
+        "Power": 30.0,
+        "DryWeight": 224.0,
+        "SeatHeight": 790.0
+    },
+    {
+        "Brand": "aermacchi",
+        "Model": "ala verde sport",
+        "Year": 1970,
+        "Category": "Sport",
+        "Displacement": 246.0,
+        "Power": 18.5,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "ajp",
+        "Model": "pr4 125 sm",
+        "Year": 2010,
+        "Category": "Super motard",
+        "Displacement": 124.0,
+        "Power": 12.6,
+        "DryWeight": 104.0,
+        "SeatHeight": 910.0
+    },
+    {
+        "Brand": "ajp",
+        "Model": "pr4 125 supermoto",
+        "Year": 2008,
+        "Category": "Super motard",
+        "Displacement": 124.0,
+        "Power": 12.5,
+        "DryWeight": 101.0,
+        "SeatHeight": 850.0
+    },
+    {
+        "Brand": "ajp",
+        "Model": "pr4 125 trial",
+        "Year": 2005,
+        "Category": "Trial",
+        "Displacement": 125.0,
+        "Power": 14.8,
+        "DryWeight": 98.0,
+        "SeatHeight": 910.0
+    },
+    {
+        "Brand": "aprilia",
+        "Model": "mini rx 50 challenge",
+        "Year": 2005,
+        "Category": "Minibike, cross",
+        "Displacement": 49.8,
+        "Power": 3.0,
+        "DryWeight": 38.0,
+        "SeatHeight": 734.0
+    },
+    {
+        "Brand": "aprilia",
+        "Model": "rsv4 fw-gp",
+        "Year": 2017,
+        "Category": "Sport",
+        "Displacement": 999.6,
+        "Power": 230.0,
+        "DryWeight": null,
+        "SeatHeight": 840.0
+    },
+    {
+        "Brand": "aprilia",
+        "Model": "rsv4 rr",
+        "Year": 2015,
+        "Category": "Sport",
+        "Displacement": 999.6,
+        "Power": 201.0,
+        "DryWeight": 180.0,
+        "SeatHeight": 845.0
+    },
+    {
+        "Brand": "aprilia",
+        "Model": "scarabeo 200",
+        "Year": 2007,
+        "Category": "Scooter",
+        "Displacement": 180.8,
+        "Power": 19.0,
+        "DryWeight": 154.0,
+        "SeatHeight": 810.0
+    },
+    {
+        "Brand": "aprilia",
+        "Model": "scarabeo 400",
+        "Year": 2008,
+        "Category": "Scooter",
+        "Displacement": 400.0,
+        "Power": 33.3,
+        "DryWeight": 194.0,
+        "SeatHeight": 785.0
+    },
+    {
+        "Brand": "aprilia",
+        "Model": "tuono v4r",
+        "Year": 2011,
+        "Category": "Naked bike",
+        "Displacement": 999.0,
+        "Power": 162.0,
+        "DryWeight": 179.0,
+        "SeatHeight": 840.0
+    },
+    {
+        "Brand": "ariel",
+        "Model": "nh 350 red hunter",
+        "Year": 1951,
+        "Category": "Allround",
+        "Displacement": 346.0,
+        "Power": 19.5,
+        "DryWeight": 159.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "benelli",
+        "Model": "motobi 200 evo",
+        "Year": 2021,
+        "Category": "Enduro / offroad",
+        "Displacement": 197.0,
+        "Power": 12.7,
+        "DryWeight": null,
+        "SeatHeight": 711.0
+    },
+    {
+        "Brand": "benelli",
+        "Model": "pepe lx",
+        "Year": 2006,
+        "Category": "Scooter",
+        "Displacement": 49.2,
+        "Power": null,
+        "DryWeight": 81.0,
+        "SeatHeight": 740.0
+    },
+    {
+        "Brand": "benelli",
+        "Model": "tnt cafe racer",
+        "Year": 2006,
+        "Category": "Naked bike",
+        "Displacement": 1130.0,
+        "Power": 135.0,
+        "DryWeight": 196.0,
+        "SeatHeight": 780.0
+    },
+    {
+        "Brand": "benelli",
+        "Model": "tnt r",
+        "Year": 2015,
+        "Category": "Naked bike",
+        "Displacement": 1131.0,
+        "Power": 157.0,
+        "DryWeight": 205.0,
+        "SeatHeight": 830.0
+    },
+    {
+        "Brand": "benelli",
+        "Model": "tnt sport",
+        "Year": 2006,
+        "Category": "Sport",
+        "Displacement": 1130.0,
+        "Power": 135.0,
+        "DryWeight": 199.0,
+        "SeatHeight": 780.0
+    },
+    {
+        "Brand": "benelli",
+        "Model": "tornado 1130",
+        "Year": 2006,
+        "Category": "Sport",
+        "Displacement": 1130.0,
+        "Power": 160.0,
+        "DryWeight": null,
+        "SeatHeight": 818.0
+    },
+    {
+        "Brand": "benelli",
+        "Model": "tornado 302",
+        "Year": 2016,
+        "Category": "Sport",
+        "Displacement": 300.0,
+        "Power": 36.0,
+        "DryWeight": 180.0,
+        "SeatHeight": 790.0
+    },
+    {
+        "Brand": "benelli",
+        "Model": "tornado tre 903 le",
+        "Year": 2011,
+        "Category": "Sport",
+        "Displacement": 898.0,
+        "Power": 140.0,
+        "DryWeight": 185.0,
+        "SeatHeight": 810.0
+    },
+    {
+        "Brand": "benelli",
+        "Model": "trk 502 x",
+        "Year": 2018,
+        "Category": "Allround",
+        "Displacement": 499.6,
+        "Power": 47.6,
+        "DryWeight": 213.0,
+        "SeatHeight": 840.0
+    },
+    {
+        "Brand": "beta",
+        "Model": "ark ac paddock",
+        "Year": 2010,
+        "Category": "Scooter",
+        "Displacement": 49.0,
+        "Power": null,
+        "DryWeight": 88.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "beta",
+        "Model": "ark ac rr",
+        "Year": 2010,
+        "Category": "Scooter",
+        "Displacement": 49.0,
+        "Power": null,
+        "DryWeight": 88.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "beta",
+        "Model": "ark ac tribe",
+        "Year": 2008,
+        "Category": "Scooter",
+        "Displacement": 49.0,
+        "Power": null,
+        "DryWeight": 88.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "beta",
+        "Model": "ark liquid cooled 50",
+        "Year": 2004,
+        "Category": "Scooter",
+        "Displacement": 49.2,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "beta",
+        "Model": "ark one ac",
+        "Year": 2010,
+        "Category": "Scooter",
+        "Displacement": 49.0,
+        "Power": null,
+        "DryWeight": 88.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "beta",
+        "Model": "eikon team 50",
+        "Year": 2004,
+        "Category": "Scooter",
+        "Displacement": 49.0,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "beta",
+        "Model": "euro 350",
+        "Year": 2001,
+        "Category": "Naked bike",
+        "Displacement": 349.0,
+        "Power": null,
+        "DryWeight": 150.0,
+        "SeatHeight": 700.0
+    },
+    {
+        "Brand": "beta",
+        "Model": "evo 80 junior",
+        "Year": 2010,
+        "Category": "Trial",
+        "Displacement": 79.6,
+        "Power": null,
+        "DryWeight": 60.0,
+        "SeatHeight": 620.0
+    },
+    {
+        "Brand": "beta",
+        "Model": "minicross r 125",
+        "Year": 2008,
+        "Category": "Minibike, cross",
+        "Displacement": 125.0,
+        "Power": null,
+        "DryWeight": 64.5,
+        "SeatHeight": 760.0
+    },
+    {
+        "Brand": "bmw",
+        "Model": "k 1600 gtl exclusive",
+        "Year": 2014,
+        "Category": "Touring",
+        "Displacement": 1649.0,
+        "Power": 160.0,
+        "DryWeight": 321.0,
+        "SeatHeight": 750.0
+    },
+    {
+        "Brand": "bmw",
+        "Model": "k 75 s",
+        "Year": 1995,
+        "Category": "Sport touring",
+        "Displacement": 740.0,
+        "Power": 75.0,
+        "DryWeight": 229.0,
+        "SeatHeight": 810.0
+    },
+    {
+        "Brand": "bmw",
+        "Model": "m 1000 rr",
+        "Year": 2021,
+        "Category": "Sport",
+        "Displacement": 999.0,
+        "Power": 212.0,
+        "DryWeight": null,
+        "SeatHeight": 832.0
+    },
+    {
+        "Brand": "bmw",
+        "Model": "r 100 gs",
+        "Year": 1988,
+        "Category": "Enduro / offroad",
+        "Displacement": 979.0,
+        "Power": 60.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bmw",
+        "Model": "r 1100 rt",
+        "Year": 1996,
+        "Category": "Touring",
+        "Displacement": 1085.0,
+        "Power": 90.0,
+        "DryWeight": null,
+        "SeatHeight": 800.0
+    },
+    {
+        "Brand": "bmw",
+        "Model": "r 1250 gs  edition 40 year gs",
+        "Year": 2022,
+        "Category": "Enduro / offroad",
+        "Displacement": 1254.0,
+        "Power": 136.0,
+        "DryWeight": null,
+        "SeatHeight": 850.0
+    },
+    {
+        "Brand": "bmw",
+        "Model": "r 850 r classic",
+        "Year": 2003,
+        "Category": "Naked bike",
+        "Displacement": 848.0,
+        "Power": 70.0,
+        "DryWeight": 235.0,
+        "SeatHeight": 760.0
+    },
+    {
+        "Brand": "bmw",
+        "Model": "r nine t",
+        "Year": 2014,
+        "Category": "Naked bike",
+        "Displacement": 1170.0,
+        "Power": 108.0,
+        "DryWeight": null,
+        "SeatHeight": 785.0
+    },
+    {
+        "Brand": "bmw",
+        "Model": "r ninet urban gs x",
+        "Year": 2018,
+        "Category": "Naked bike",
+        "Displacement": 1170.0,
+        "Power": 110.0,
+        "DryWeight": null,
+        "SeatHeight": 850.0
+    },
+    {
+        "Brand": "bmw",
+        "Model": "r2 series 3",
+        "Year": 1934,
+        "Category": "Allround",
+        "Displacement": 198.0,
+        "Power": 8.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bmw",
+        "Model": "r50 os",
+        "Year": 1960,
+        "Category": "Allround",
+        "Displacement": 494.0,
+        "Power": 35.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "borile",
+        "Model": "bastard 450",
+        "Year": 2014,
+        "Category": "Enduro / offroad",
+        "Displacement": 449.0,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bourget",
+        "Model": "fat daddy 330 classic",
+        "Year": 2013,
+        "Category": "Custom / cruiser",
+        "Displacement": 1917.4,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bourget",
+        "Model": "python 330 classic",
+        "Year": 2013,
+        "Category": "Custom / cruiser",
+        "Displacement": 1917.4,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bourget",
+        "Model": "suicide king cobra",
+        "Year": 2011,
+        "Category": "Custom / cruiser",
+        "Displacement": 2146.8,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bourget",
+        "Model": "super stretch",
+        "Year": 2018,
+        "Category": "Custom / cruiser",
+        "Displacement": 2032.1,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bpg",
+        "Model": "dtv shredder trail",
+        "Year": 2015,
+        "Category": "Prototype / concept model",
+        "Displacement": 196.0,
+        "Power": 14.0,
+        "DryWeight": 127.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bpg",
+        "Model": "werks dtv shredder",
+        "Year": 2021,
+        "Category": "ATV",
+        "Displacement": 196.0,
+        "Power": 14.0,
+        "DryWeight": 127.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brammo",
+        "Model": "empulse r",
+        "Year": 2013,
+        "Category": "Naked bike",
+        "Displacement": null,
+        "Power": 53.6,
+        "DryWeight": 190.5,
+        "SeatHeight": 810.0
+    },
+    {
+        "Brand": "brammo",
+        "Model": "enertia",
+        "Year": 2010,
+        "Category": "Sport",
+        "Displacement": null,
+        "Power": 17.4,
+        "DryWeight": 147.0,
+        "SeatHeight": 813.0
+    },
+    {
+        "Brand": "brammo",
+        "Model": "enertia",
+        "Year": 2011,
+        "Category": "Sport",
+        "Displacement": null,
+        "Power": 17.4,
+        "DryWeight": 147.0,
+        "SeatHeight": 813.0
+    },
+    {
+        "Brand": "brammo",
+        "Model": "enertia plus",
+        "Year": 2015,
+        "Category": "Sport",
+        "Displacement": null,
+        "Power": 17.4,
+        "DryWeight": 150.0,
+        "SeatHeight": 810.0
+    },
+    {
+        "Brand": "brammo",
+        "Model": "enertia plus le",
+        "Year": 2014,
+        "Category": "Sport",
+        "Displacement": null,
+        "Power": 17.4,
+        "DryWeight": 150.0,
+        "SeatHeight": 810.0
+    },
+    {
+        "Brand": "brammo",
+        "Model": "enertia plus le",
+        "Year": 2015,
+        "Category": "Sport",
+        "Displacement": null,
+        "Power": 17.4,
+        "DryWeight": 150.0,
+        "SeatHeight": 810.0
+    },
+    {
+        "Brand": "brammo",
+        "Model": "engage mx",
+        "Year": 2012,
+        "Category": "Prototype / concept model",
+        "Displacement": null,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brammo",
+        "Model": "engage smr",
+        "Year": 2012,
+        "Category": "Prototype / concept model",
+        "Displacement": null,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brammo",
+        "Model": "hong kong police",
+        "Year": 2012,
+        "Category": "Sport",
+        "Displacement": null,
+        "Power": 17.4,
+        "DryWeight": 145.0,
+        "SeatHeight": 810.0
+    },
+    {
+        "Brand": "bridgestone",
+        "Model": "350 gto",
+        "Year": 1967,
+        "Category": "Allround",
+        "Displacement": 350.0,
+        "Power": 40.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bridgestone",
+        "Model": "350 gto",
+        "Year": 1968,
+        "Category": "Allround",
+        "Displacement": 350.0,
+        "Power": 40.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "britten",
+        "Model": "v1000",
+        "Year": 1993,
+        "Category": "Sport",
+        "Displacement": 999.0,
+        "Power": 166.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brixton",
+        "Model": "bx 125",
+        "Year": 2017,
+        "Category": "Allround",
+        "Displacement": 124.0,
+        "Power": 11.3,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brixton",
+        "Model": "bx 125 r",
+        "Year": 2018,
+        "Category": "Naked bike",
+        "Displacement": 124.0,
+        "Power": 11.1,
+        "DryWeight": 134.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brixton",
+        "Model": "bx 125 r",
+        "Year": 2019,
+        "Category": "Naked bike",
+        "Displacement": 124.8,
+        "Power": 11.1,
+        "DryWeight": 134.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brixton",
+        "Model": "cromwell 1200",
+        "Year": 2022,
+        "Category": "Sport",
+        "Displacement": 1222.0,
+        "Power": 80.5,
+        "DryWeight": 235.0,
+        "SeatHeight": 800.0
+    },
+    {
+        "Brand": "brixton",
+        "Model": "cromwell 125",
+        "Year": 2020,
+        "Category": "Allround",
+        "Displacement": 124.8,
+        "Power": 11.1,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brixton",
+        "Model": "cromwell 125",
+        "Year": 2021,
+        "Category": "Allround",
+        "Displacement": 125.0,
+        "Power": 11.0,
+        "DryWeight": null,
+        "SeatHeight": 770.0
+    },
+    {
+        "Brand": "brixton",
+        "Model": "cromwell 125",
+        "Year": 2022,
+        "Category": "Allround",
+        "Displacement": 125.0,
+        "Power": 11.0,
+        "DryWeight": null,
+        "SeatHeight": 770.0
+    },
+    {
+        "Brand": "brixton",
+        "Model": "crossfire 125",
+        "Year": 2022,
+        "Category": "Enduro / offroad",
+        "Displacement": 124.8,
+        "Power": 13.4,
+        "DryWeight": null,
+        "SeatHeight": 810.0
+    },
+    {
+        "Brand": "brixton",
+        "Model": "crossfire 125 xs",
+        "Year": 2020,
+        "Category": "Enduro / offroad",
+        "Displacement": 124.8,
+        "Power": 11.1,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brixton",
+        "Model": "crossfire 125 xs",
+        "Year": 2021,
+        "Category": "Enduro / offroad",
+        "Displacement": 125.0,
+        "Power": 11.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brixton",
+        "Model": "crossfire 125 xs",
+        "Year": 2022,
+        "Category": "Enduro / offroad",
+        "Displacement": 125.0,
+        "Power": 11.0,
+        "DryWeight": null,
+        "SeatHeight": 760.0
+    },
+    {
+        "Brand": "brixton",
+        "Model": "crossfire 500 x",
+        "Year": 2020,
+        "Category": "Allround",
+        "Displacement": 486.0,
+        "Power": 46.9,
+        "DryWeight": 180.0,
+        "SeatHeight": 795.0
+    },
+    {
+        "Brand": "brixton",
+        "Model": "crossfire 500 x",
+        "Year": 2021,
+        "Category": "Allround",
+        "Displacement": 486.0,
+        "Power": 46.9,
+        "DryWeight": null,
+        "SeatHeight": 795.0
+    },
+    {
+        "Brand": "brixton",
+        "Model": "crossfire 500 x",
+        "Year": 2022,
+        "Category": "Sport",
+        "Displacement": 486.0,
+        "Power": 46.9,
+        "DryWeight": null,
+        "SeatHeight": 795.0
+    },
+    {
+        "Brand": "brixton",
+        "Model": "crossfire 500 xc",
+        "Year": 2022,
+        "Category": "Allround",
+        "Displacement": 486.0,
+        "Power": 46.9,
+        "DryWeight": null,
+        "SeatHeight": 839.0
+    },
+    {
+        "Brand": "brixton",
+        "Model": "felsberg 125",
+        "Year": 2020,
+        "Category": "Allround",
+        "Displacement": 124.8,
+        "Power": 11.1,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brixton",
+        "Model": "felsberg 125 x",
+        "Year": 2019,
+        "Category": "Enduro / offroad",
+        "Displacement": 124.8,
+        "Power": 11.1,
+        "DryWeight": 134.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brixton",
+        "Model": "felsberg 250",
+        "Year": 2020,
+        "Category": "Allround",
+        "Displacement": 249.0,
+        "Power": 17.4,
+        "DryWeight": 155.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brixton",
+        "Model": "sk8",
+        "Year": 2019,
+        "Category": "Allround",
+        "Displacement": 124.8,
+        "Power": 11.1,
+        "DryWeight": 134.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brixton",
+        "Model": "sk8 125",
+        "Year": 2020,
+        "Category": "Allround",
+        "Displacement": 124.8,
+        "Power": 11.1,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brockhouse",
+        "Model": "corgi",
+        "Year": 1949,
+        "Category": "Scooter",
+        "Displacement": 98.0,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brough superior",
+        "Model": "amb 001",
+        "Year": 2020,
+        "Category": "Sport",
+        "Displacement": 997.0,
+        "Power": 180.0,
+        "DryWeight": 180.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brough superior",
+        "Model": "amb 001",
+        "Year": 2021,
+        "Category": "Sport",
+        "Displacement": 997.0,
+        "Power": 180.0,
+        "DryWeight": 180.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brough superior",
+        "Model": "lawrence",
+        "Year": 2021,
+        "Category": "Sport",
+        "Displacement": 997.0,
+        "Power": 100.0,
+        "DryWeight": 200.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brough superior",
+        "Model": "lawrence",
+        "Year": 2022,
+        "Category": "Sport",
+        "Displacement": 997.0,
+        "Power": 102.0,
+        "DryWeight": 200.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "brough superior",
+        "Model": "pendine sand racer",
+        "Year": 2018,
+        "Category": "Sport",
+        "Displacement": 997.0,
+        "Power": 100.0,
+        "DryWeight": 196.0,
+        "SeatHeight": 820.0
+    },
+    {
+        "Brand": "brough superior",
+        "Model": "pendine sand racer",
+        "Year": 2019,
+        "Category": "Sport",
+        "Displacement": 997.0,
+        "Power": 100.0,
+        "DryWeight": 186.0,
+        "SeatHeight": 820.0
+    },
+    {
+        "Brand": "brough superior",
+        "Model": "pendine sand racer",
+        "Year": 2020,
+        "Category": "Sport",
+        "Displacement": 997.0,
+        "Power": 102.0,
+        "DryWeight": 186.0,
+        "SeatHeight": 820.0
+    },
+    {
+        "Brand": "bsa",
+        "Model": "350 plunger",
+        "Year": 1951,
+        "Category": "Classic",
+        "Displacement": 350.0,
+        "Power": 23.0,
+        "DryWeight": 154.2,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "500 ss gold star",
+        "Year": 1971,
+        "Category": "Allround",
+        "Displacement": 499.0,
+        "Power": 34.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a 50 royal star",
+        "Year": 1963,
+        "Category": "Naked bike",
+        "Displacement": 500.0,
+        "Power": 33.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a 50 royal star",
+        "Year": 1969,
+        "Category": "Naked bike",
+        "Displacement": 500.0,
+        "Power": 33.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a 65 lightning",
+        "Year": 1970,
+        "Category": "Classic",
+        "Displacement": 654.0,
+        "Power": 49.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a 65 lightning",
+        "Year": 1971,
+        "Category": "Classic",
+        "Displacement": 654.0,
+        "Power": 49.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a 65 lightning",
+        "Year": 1972,
+        "Category": "Classic",
+        "Displacement": 654.0,
+        "Power": 49.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a 65 ss firebird",
+        "Year": 1970,
+        "Category": "Classic",
+        "Displacement": 654.0,
+        "Power": 49.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a 65 thunderbolt",
+        "Year": 1970,
+        "Category": "Classic",
+        "Displacement": 654.0,
+        "Power": 46.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a 65 thunderbolt",
+        "Year": 1971,
+        "Category": "Classic",
+        "Displacement": 654.0,
+        "Power": 46.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a 65 thunderbolt",
+        "Year": 1972,
+        "Category": "Classic",
+        "Displacement": 654.0,
+        "Power": 46.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a 75 rocket 3",
+        "Year": 1970,
+        "Category": "Touring",
+        "Displacement": 740.0,
+        "Power": 58.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a 75 rocket 3",
+        "Year": 1971,
+        "Category": "Classic",
+        "Displacement": 740.0,
+        "Power": 58.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a 75 rocket 3",
+        "Year": 1972,
+        "Category": "Classic",
+        "Displacement": 740.0,
+        "Power": 58.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a65 star",
+        "Year": 1962,
+        "Category": "Sport",
+        "Displacement": 654.0,
+        "Power": 54.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a65 star",
+        "Year": 1963,
+        "Category": "Sport",
+        "Displacement": 654.0,
+        "Power": 54.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a7 shoting star",
+        "Year": 1954,
+        "Category": "Naked bike",
+        "Displacement": 497.0,
+        "Power": 19.7,
+        "DryWeight": 193.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a7 shoting star",
+        "Year": 1955,
+        "Category": "Naked bike",
+        "Displacement": 497.0,
+        "Power": 19.7,
+        "DryWeight": 193.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a7 shoting star",
+        "Year": 1956,
+        "Category": "Naked bike",
+        "Displacement": 497.0,
+        "Power": 19.7,
+        "DryWeight": 193.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a7 shoting star",
+        "Year": 1957,
+        "Category": "Naked bike",
+        "Displacement": 497.0,
+        "Power": 19.7,
+        "DryWeight": 193.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a7 shoting star",
+        "Year": 1958,
+        "Category": "Naked bike",
+        "Displacement": 497.0,
+        "Power": 19.7,
+        "DryWeight": 193.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a7 shoting star",
+        "Year": 1959,
+        "Category": "Naked bike",
+        "Displacement": 497.0,
+        "Power": 19.7,
+        "DryWeight": 193.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a7 shoting star",
+        "Year": 1960,
+        "Category": "Naked bike",
+        "Displacement": 497.0,
+        "Power": 19.7,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a7 shoting star",
+        "Year": 1961,
+        "Category": "Naked bike",
+        "Displacement": 497.0,
+        "Power": 19.7,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "a7 shoting star",
+        "Year": 1962,
+        "Category": "Naked bike",
+        "Displacement": 497.0,
+        "Power": 19.7,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "b 25 star",
+        "Year": 1970,
+        "Category": "Classic",
+        "Displacement": 247.0,
+        "Power": 26.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "b 44 shooting star",
+        "Year": 1970,
+        "Category": "Touring",
+        "Displacement": 441.0,
+        "Power": 30.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "b25  starfire",
+        "Year": 1967,
+        "Category": "Allround",
+        "Displacement": 247.0,
+        "Power": 25.5,
+        "DryWeight": 142.9,
+        "SeatHeight": 813.0
+    },
+    {
+        "Brand": "bsa",
+        "Model": "b25  starfire",
+        "Year": 1968,
+        "Category": "Allround",
+        "Displacement": 247.0,
+        "Power": 25.5,
+        "DryWeight": 131.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "b25  starfire",
+        "Year": 1969,
+        "Category": "Allround",
+        "Displacement": 247.0,
+        "Power": 25.5,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "b50ss",
+        "Year": 1971,
+        "Category": "Sport",
+        "Displacement": 499.0,
+        "Power": 33.5,
+        "DryWeight": 140.6,
+        "SeatHeight": 813.0
+    },
+    {
+        "Brand": "bsa",
+        "Model": "bantam d5 super",
+        "Year": 1958,
+        "Category": "Allround",
+        "Displacement": 175.0,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "bantam d7",
+        "Year": 1959,
+        "Category": "Allround",
+        "Displacement": 175.0,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "d10 sport",
+        "Year": 1967,
+        "Category": "Sport",
+        "Displacement": 175.0,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "empire star",
+        "Year": 1936,
+        "Category": "Allround",
+        "Displacement": 500.0,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "empire star",
+        "Year": 1937,
+        "Category": "Allround",
+        "Displacement": 500.0,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "empire star",
+        "Year": 1938,
+        "Category": "Allround",
+        "Displacement": 500.0,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "firebird scrambler",
+        "Year": 1968,
+        "Category": "Sport",
+        "Displacement": 654.0,
+        "Power": 52.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "firebird scrambler",
+        "Year": 1969,
+        "Category": "Sport",
+        "Displacement": 654.0,
+        "Power": 52.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "golden flash",
+        "Year": 1954,
+        "Category": "Allround",
+        "Displacement": 646.0,
+        "Power": 35.0,
+        "DryWeight": 190.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "golden flash",
+        "Year": 1955,
+        "Category": "Allround",
+        "Displacement": 646.0,
+        "Power": 35.0,
+        "DryWeight": 190.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "golden flash",
+        "Year": 1956,
+        "Category": "Allround",
+        "Displacement": 646.0,
+        "Power": 35.0,
+        "DryWeight": 190.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "golden flash",
+        "Year": 1957,
+        "Category": "Allround",
+        "Displacement": 646.0,
+        "Power": 35.0,
+        "DryWeight": 190.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "kirby",
+        "Year": 1968,
+        "Category": "Cross / motocross",
+        "Displacement": 750.0,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "m 21",
+        "Year": 1953,
+        "Category": "Allround",
+        "Displacement": 591.0,
+        "Power": 15.0,
+        "DryWeight": 180.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "m 21",
+        "Year": 1954,
+        "Category": "Allround",
+        "Displacement": 591.0,
+        "Power": 15.0,
+        "DryWeight": 180.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "m 21",
+        "Year": 1955,
+        "Category": "Allround",
+        "Displacement": 591.0,
+        "Power": 15.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "m 21",
+        "Year": 1956,
+        "Category": "Allround",
+        "Displacement": 591.0,
+        "Power": 15.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "motors roamer nuo",
+        "Year": 2011,
+        "Category": "Scooter",
+        "Displacement": null,
+        "Power": 1.1,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "motors roamer nxg",
+        "Year": 2011,
+        "Category": "Scooter",
+        "Displacement": null,
+        "Power": 0.7,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "motors street rider",
+        "Year": 2011,
+        "Category": "Scooter",
+        "Displacement": null,
+        "Power": 0.3,
+        "DryWeight": 65.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "rocket 3",
+        "Year": 1968,
+        "Category": "Sport",
+        "Displacement": 740.0,
+        "Power": 58.0,
+        "DryWeight": 206.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "rocket 3",
+        "Year": 1969,
+        "Category": "Sport",
+        "Displacement": 740.0,
+        "Power": 58.0,
+        "DryWeight": 206.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "bsa",
+        "Model": "sr 500 gold",
+        "Year": 2003,
+        "Category": "Classic",
+        "Displacement": 499.0,
+        "Power": 34.0,
+        "DryWeight": 145.0,
+        "SeatHeight": 780.0
+    },
+    {
+        "Brand": "buccimoto",
+        "Model": "br1-f4 cross 10-12",
+        "Year": 2009,
+        "Category": "Cross / motocross",
+        "Displacement": 150.0,
+        "Power": 11.0,
+        "DryWeight": 62.0,
+        "SeatHeight": 830.0
+    },
+    {
+        "Brand": "buccimoto",
+        "Model": "br1-f4 motard",
+        "Year": 2010,
+        "Category": "Super motard",
+        "Displacement": 150.0,
+        "Power": 11.0,
+        "DryWeight": 68.0,
+        "SeatHeight": 770.0
+    },
+    {
+        "Brand": "buccimoto",
+        "Model": "br1-f4 motard 12-12",
+        "Year": 2009,
+        "Category": "Super motard",
+        "Displacement": 150.0,
+        "Power": 11.0,
+        "DryWeight": 62.0,
+        "SeatHeight": 770.0
+    },
+    {
+        "Brand": "buccimoto",
+        "Model": "br1-f6 cross 14-12",
+        "Year": 2013,
+        "Category": "Cross / motocross",
+        "Displacement": 150.0,
+        "Power": 11.0,
+        "DryWeight": 64.0,
+        "SeatHeight": 800.0
+    },
+    {
+        "Brand": "buccimoto",
+        "Model": "br1-f6 motard",
+        "Year": 2013,
+        "Category": "Super motard",
+        "Displacement": 150.0,
+        "Power": 11.0,
+        "DryWeight": 64.0,
+        "SeatHeight": 790.0
+    },
+    {
+        "Brand": "buccimoto",
+        "Model": "br10-gp yx-tokawa-gpx",
+        "Year": 2018,
+        "Category": "Minibike, sport",
+        "Displacement": 110.0,
+        "Power": null,
+        "DryWeight": 62.0,
+        "SeatHeight": 650.0
+    },
+    {
+        "Brand": "buccimoto",
+        "Model": "br1f6 motard",
+        "Year": 2014,
+        "Category": "Super motard",
+        "Displacement": 150.0,
+        "Power": 11.0,
+        "DryWeight": 64.0,
+        "SeatHeight": 790.0
+    },
+    {
+        "Brand": "buccimoto",
+        "Model": "br1r cr 125",
+        "Year": 2008,
+        "Category": "Cross / motocross",
+        "Displacement": 125.0,
+        "Power": 10.5,
+        "DryWeight": null,
+        "SeatHeight": 830.0
+    },
+    {
+        "Brand": "buccimoto",
+        "Model": "br1r cr 140",
+        "Year": 2008,
+        "Category": "Cross / motocross",
+        "Displacement": 140.0,
+        "Power": 11.0,
+        "DryWeight": null,
+        "SeatHeight": 830.0
+    },
+    {
+        "Brand": "buccimoto",
+        "Model": "br1r sm 125",
+        "Year": 2008,
+        "Category": "Super motard",
+        "Displacement": 125.0,
+        "Power": 10.5,
+        "DryWeight": 67.0,
+        "SeatHeight": 790.0
+    },
+    {
+        "Brand": "buccimoto",
+        "Model": "fm20mx",
+        "Year": 2022,
+        "Category": "Cross / motocross",
+        "Displacement": 150.0,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": 830.0
+    },
+    {
+        "Brand": "buell",
+        "Model": "lightning cityx xb9sx",
+        "Year": 2005,
+        "Category": "Naked bike",
+        "Displacement": 984.0,
+        "Power": 92.0,
+        "DryWeight": 174.6,
+        "SeatHeight": 777.0
+    },
+    {
+        "Brand": "bultaco",
+        "Model": "brinco c",
+        "Year": 2017,
+        "Category": "Enduro / offroad",
+        "Displacement": null,
+        "Power": 2.7,
+        "DryWeight": 42.3,
+        "SeatHeight": 1011.0
+    },
+    {
+        "Brand": "bultaco",
+        "Model": "brinco s",
+        "Year": 2017,
+        "Category": "Enduro / offroad",
+        "Displacement": null,
+        "Power": 2.7,
+        "DryWeight": 42.3,
+        "SeatHeight": 1011.0
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "125 c 9 freccia",
+        "Year": 1988,
+        "Category": "Sport",
+        "Displacement": 125.0,
+        "Power": 24.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "125 cruiser",
+        "Year": 1989,
+        "Category": "Enduro / offroad",
+        "Displacement": 125.0,
+        "Power": 27.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "125 cruiser",
+        "Year": 1990,
+        "Category": "Enduro / offroad",
+        "Displacement": 125.0,
+        "Power": 27.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "125 cruiser",
+        "Year": 1991,
+        "Category": "Custom / cruiser",
+        "Displacement": 125.0,
+        "Power": 27.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "650 alazzurra (reduced effect)",
+        "Year": 1985,
+        "Category": "Sport touring",
+        "Displacement": 649.0,
+        "Power": 50.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "650 alazzurra (reduced effect)",
+        "Year": 1986,
+        "Category": "Unspecified category",
+        "Displacement": 649.0,
+        "Power": 50.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "650 alazzurra (reduced effect)",
+        "Year": 1987,
+        "Category": "Unspecified category",
+        "Displacement": 649.0,
+        "Power": 50.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "650 elefant",
+        "Year": 1985,
+        "Category": "Enduro / offroad",
+        "Displacement": 649.0,
+        "Power": 50.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "650 elefant",
+        "Year": 1986,
+        "Category": "Enduro / offroad",
+        "Displacement": 649.0,
+        "Power": 50.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "650 elefant",
+        "Year": 1987,
+        "Category": "Allround",
+        "Displacement": 649.0,
+        "Power": 50.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "750 elefant",
+        "Year": 1994,
+        "Category": "Unspecified category",
+        "Displacement": 748.0,
+        "Power": 60.0,
+        "DryWeight": 188.0,
+        "SeatHeight": 835.0
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "750 elefant",
+        "Year": 1995,
+        "Category": "Enduro / offroad",
+        "Displacement": 748.0,
+        "Power": 60.0,
+        "DryWeight": 188.0,
+        "SeatHeight": 835.0
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "900 elefant",
+        "Year": 1994,
+        "Category": "Unspecified category",
+        "Displacement": 904.0,
+        "Power": 68.0,
+        "DryWeight": 185.0,
+        "SeatHeight": 835.0
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "900 i.e.",
+        "Year": 1998,
+        "Category": "Enduro / offroad",
+        "Displacement": 904.0,
+        "Power": 73.0,
+        "DryWeight": 193.0,
+        "SeatHeight": 790.0
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "900 i.e. gt",
+        "Year": 1993,
+        "Category": "Unspecified category",
+        "Displacement": 904.0,
+        "Power": 68.0,
+        "DryWeight": 204.0,
+        "SeatHeight": 840.0
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "brillo 125",
+        "Year": 2008,
+        "Category": "Scooter",
+        "Displacement": 125.0,
+        "Power": 9.5,
+        "DryWeight": 122.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "canyon 500",
+        "Year": 1997,
+        "Category": "Enduro / offroad",
+        "Displacement": 498.0,
+        "Power": 33.5,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "canyon 500",
+        "Year": 1999,
+        "Category": "Enduro / offroad",
+        "Displacement": 498.0,
+        "Power": 33.5,
+        "DryWeight": 165.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "canyon 500",
+        "Year": 2000,
+        "Category": "Enduro / offroad",
+        "Displacement": 498.0,
+        "Power": 34.0,
+        "DryWeight": 160.0,
+        "SeatHeight": 795.0
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "canyon 600",
+        "Year": 1996,
+        "Category": "Enduro / offroad",
+        "Displacement": 601.0,
+        "Power": 34.0,
+        "DryWeight": null,
+        "SeatHeight": 795.0
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "canyon 600",
+        "Year": 1997,
+        "Category": "Enduro / offroad",
+        "Displacement": 601.0,
+        "Power": 34.0,
+        "DryWeight": 165.0,
+        "SeatHeight": 795.0
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "canyon 600",
+        "Year": 1998,
+        "Category": "Enduro / offroad",
+        "Displacement": 601.0,
+        "Power": 34.0,
+        "DryWeight": 165.0,
+        "SeatHeight": 795.0
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "e 750 elefant",
+        "Year": 1996,
+        "Category": "Enduro / offroad",
+        "Displacement": 748.0,
+        "Power": 60.0,
+        "DryWeight": 185.0,
+        "SeatHeight": 835.0
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "e 750 elefant",
+        "Year": 1997,
+        "Category": "Enduro / offroad",
+        "Displacement": 748.0,
+        "Power": 60.0,
+        "DryWeight": 188.0,
+        "SeatHeight": 835.0
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "e 900 elefant",
+        "Year": 1996,
+        "Category": "Enduro / offroad",
+        "Displacement": 904.0,
+        "Power": 68.0,
+        "DryWeight": 188.0,
+        "SeatHeight": 835.0
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "navigator 1000",
+        "Year": 2003,
+        "Category": "Enduro / offroad",
+        "Displacement": 996.0,
+        "Power": null,
+        "DryWeight": 210.0,
+        "SeatHeight": 800.0
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "navigator 1000",
+        "Year": 2004,
+        "Category": "Enduro / offroad",
+        "Displacement": 996.0,
+        "Power": 97.0,
+        "DryWeight": 210.0,
+        "SeatHeight": 850.0
+    },
+    {
+        "Brand": "cagiva",
+        "Model": "planet 125",
+        "Year": 1998,
+        "Category": "Naked bike",
+        "Displacement": 125.0,
+        "Power": 15.0,
+        "DryWeight": 125.0,
+        "SeatHeight": 795.0
+    },
+    {
+        "Brand": "can-am",
+        "Model": "outlander 800r x xc",
+        "Year": 2011,
+        "Category": "ATV",
+        "Displacement": 799.9,
+        "Power": null,
+        "DryWeight": 302.0,
+        "SeatHeight": 876.0
+    },
+    {
+        "Brand": "cectek",
+        "Model": "gladiator t5",
+        "Year": 2015,
+        "Category": "ATV",
+        "Displacement": 496.2,
+        "Power": 40.2,
+        "DryWeight": 360.0,
+        "SeatHeight": 880.0
+    },
+    {
+        "Brand": "cf moto",
+        "Model": "250nk",
+        "Year": 2020,
+        "Category": "Naked bike",
+        "Displacement": 249.0,
+        "Power": 26.2,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "cf moto",
+        "Model": "250nk",
+        "Year": 2021,
+        "Category": "Naked bike",
+        "Displacement": 249.2,
+        "Power": 26.2,
+        "DryWeight": 151.0,
+        "SeatHeight": 795.0
+    },
+    {
+        "Brand": "chang-jiang",
+        "Model": "bd 50qt-4a",
+        "Year": 2007,
+        "Category": "Scooter",
+        "Displacement": 49.0,
+        "Power": 3.4,
+        "DryWeight": 75.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "covingtons",
+        "Model": "speedster",
+        "Year": 2011,
+        "Category": "Custom / cruiser",
+        "Displacement": 1311.1,
+        "Power": null,
+        "DryWeight": 272.2,
+        "SeatHeight": 622.0
+    },
+    {
+        "Brand": "cpi",
+        "Model": "supercross sx",
+        "Year": 2006,
+        "Category": "Cross / motocross",
+        "Displacement": 49.2,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "cpi",
+        "Model": "xr 250",
+        "Year": 2013,
+        "Category": "Allround",
+        "Displacement": 227.4,
+        "Power": 18.8,
+        "DryWeight": 110.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "cpi",
+        "Model": "xs 250",
+        "Year": 2009,
+        "Category": "ATV",
+        "Displacement": 233.8,
+        "Power": 1.7,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "curtiss",
+        "Model": "warhawk",
+        "Year": 2018,
+        "Category": "Naked bike",
+        "Displacement": 2163.2,
+        "Power": 150.0,
+        "DryWeight": null,
+        "SeatHeight": 724.0
+    },
+    {
+        "Brand": "cushman",
+        "Model": "eagle",
+        "Year": 1950,
+        "Category": "Scooter",
+        "Displacement": 318.0,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "daelim",
+        "Model": "history 125",
+        "Year": 2006,
+        "Category": "Scooter",
+        "Displacement": 124.9,
+        "Power": null,
+        "DryWeight": 123.0,
+        "SeatHeight": 775.0
+    },
+    {
+        "Brand": "daelim",
+        "Model": "otello 125 fi",
+        "Year": 2009,
+        "Category": "Scooter",
+        "Displacement": 124.9,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "dafier",
+        "Model": "dfe 50 qt-9",
+        "Year": 2009,
+        "Category": "Scooter",
+        "Displacement": 49.9,
+        "Power": 3.2,
+        "DryWeight": 78.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "demak",
+        "Model": "dx250 dart",
+        "Year": 2018,
+        "Category": "Naked bike",
+        "Displacement": 250.0,
+        "Power": 16.0,
+        "DryWeight": 133.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "demak",
+        "Model": "matrix sport z",
+        "Year": 2011,
+        "Category": "Scooter",
+        "Displacement": 110.0,
+        "Power": null,
+        "DryWeight": 93.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "demak",
+        "Model": "spark sidecar",
+        "Year": 2011,
+        "Category": "Scooter",
+        "Displacement": 100.0,
+        "Power": null,
+        "DryWeight": 90.0,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "derbi",
+        "Model": "atlantis bullet",
+        "Year": 2004,
+        "Category": "Scooter",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": 795.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "atlantis city 100 4t",
+        "Year": 2006,
+        "Category": "Scooter",
+        "Displacement": 96.2,
+        "Power": 7.3,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "derbi",
+        "Model": "boulevard 125",
+        "Year": 2004,
+        "Category": "Scooter",
+        "Displacement": 124.0,
+        "Power": 10.5,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "derbi",
+        "Model": "gpr 125 4t 4s",
+        "Year": 2012,
+        "Category": "Sport",
+        "Displacement": 124.8,
+        "Power": 15.0,
+        "DryWeight": 120.0,
+        "SeatHeight": 810.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "rambla 300i",
+        "Year": 2010,
+        "Category": "Scooter",
+        "Displacement": 278.3,
+        "Power": 22.5,
+        "DryWeight": 146.0,
+        "SeatHeight": 775.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "revolution 50 gs",
+        "Year": 2006,
+        "Category": "Scooter",
+        "Displacement": 49.9,
+        "Power": 8.5,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda 50 sm limited",
+        "Year": 2021,
+        "Category": "Super motard",
+        "Displacement": 50.0,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": 875.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda baja 125 4t",
+        "Year": 2007,
+        "Category": "Super motard",
+        "Displacement": 123.7,
+        "Power": 12.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda baja 125 r",
+        "Year": 2008,
+        "Category": "Enduro / offroad",
+        "Displacement": 124.1,
+        "Power": null,
+        "DryWeight": 118.0,
+        "SeatHeight": 890.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda baja 125 r",
+        "Year": 2012,
+        "Category": "Enduro / offroad",
+        "Displacement": 124.1,
+        "Power": null,
+        "DryWeight": 118.0,
+        "SeatHeight": 890.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda baja 125r",
+        "Year": 2009,
+        "Category": "Enduro / offroad",
+        "Displacement": 124.1,
+        "Power": null,
+        "DryWeight": 118.0,
+        "SeatHeight": 890.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda baja 125r",
+        "Year": 2010,
+        "Category": "Enduro / offroad",
+        "Displacement": 124.1,
+        "Power": null,
+        "DryWeight": 118.0,
+        "SeatHeight": 890.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda drd pro 50 r",
+        "Year": 2008,
+        "Category": "Enduro / offroad",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": 96.0,
+        "SeatHeight": 920.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda drd pro 50 r",
+        "Year": 2009,
+        "Category": "Enduro / offroad",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": 96.0,
+        "SeatHeight": 920.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda drd pro 50 r",
+        "Year": 2010,
+        "Category": "Enduro / offroad",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": 96.0,
+        "SeatHeight": 920.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda drd pro 50 sm",
+        "Year": 2008,
+        "Category": "Super motard",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": 96.0,
+        "SeatHeight": 850.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda drd pro 50 sm",
+        "Year": 2016,
+        "Category": "Super motard",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": 96.0,
+        "SeatHeight": 850.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda drd racing 50 r",
+        "Year": 2008,
+        "Category": "Enduro / offroad",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": 97.0,
+        "SeatHeight": 875.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda drd racing 50 sm",
+        "Year": 2012,
+        "Category": "Super motard",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": 96.0,
+        "SeatHeight": 875.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda drd racing 50 sm le",
+        "Year": 2009,
+        "Category": "Super motard",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": 97.0,
+        "SeatHeight": 875.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda drd racing 50r",
+        "Year": 2009,
+        "Category": "Enduro / offroad",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": 97.0,
+        "SeatHeight": 875.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda drd x-treme 50 sm",
+        "Year": 2011,
+        "Category": "Super motard",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": 96.0,
+        "SeatHeight": 865.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda r drd racing",
+        "Year": 2006,
+        "Category": "Enduro / offroad",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": 805.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda r racer",
+        "Year": 2004,
+        "Category": "Enduro / offroad",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda r x-treme",
+        "Year": 2004,
+        "Category": "Enduro / offroad",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda racer",
+        "Year": 2005,
+        "Category": "Enduro / offroad",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda sm 125 4t",
+        "Year": 2006,
+        "Category": "Super motard",
+        "Displacement": 123.7,
+        "Power": 12.0,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda sm racer",
+        "Year": 2004,
+        "Category": "Super motard",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda x-race 50 r",
+        "Year": 2011,
+        "Category": "Enduro / offroad",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": 118.0,
+        "SeatHeight": 900.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda x-race 50 sm",
+        "Year": 2012,
+        "Category": "Super motard",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": 97.0,
+        "SeatHeight": 855.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda x-treme",
+        "Year": 2005,
+        "Category": "Enduro / offroad",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda x-treme 50 r",
+        "Year": 2006,
+        "Category": "Enduro / offroad",
+        "Displacement": 49.9,
+        "Power": 8.5,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda x-treme 50 sm",
+        "Year": 2006,
+        "Category": "Super motard",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": null
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda x-treme 50 sm",
+        "Year": 2008,
+        "Category": "Super motard",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": 97.0,
+        "SeatHeight": 900.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda x-treme 50 sm",
+        "Year": 2009,
+        "Category": "Super motard",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": 97.0,
+        "SeatHeight": 900.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda x-treme 50 sm camo",
+        "Year": 2019,
+        "Category": "Super motard",
+        "Displacement": 50.0,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": 860.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda x-treme 50 sm camo",
+        "Year": 2020,
+        "Category": "Super motard",
+        "Displacement": 50.0,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": 860.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda x-treme 50 sm camo",
+        "Year": 2021,
+        "Category": "Super motard",
+        "Displacement": 50.0,
+        "Power": null,
+        "DryWeight": null,
+        "SeatHeight": 860.0
+    },
+    {
+        "Brand": "derbi",
+        "Model": "senda x-treme ltd 50 sm",
+        "Year": 2015,
+        "Category": "Super motard",
+        "Displacement": 49.9,
+        "Power": null,
+        "DryWeight": 96.0,
+        "SeatHeight": 865.0
+    }
+]
