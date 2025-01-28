@@ -2,3 +2,4 @@ pytrends
 logging
 pandas
 numpy
+Flask==2.2.3
