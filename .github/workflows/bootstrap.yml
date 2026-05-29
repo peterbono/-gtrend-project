@@ -1,0 +1,60 @@
+# Bootstrap initial : etablit la session WhatsApp via code de liaison
+# (pas de QR a scanner, juste un code a taper dans WhatsApp sur le telephone).
+#
+# A lancer manuellement UNE FOIS, avant le cron horaire.
+# Requiert le secret LINK_PHONE (numero E.164 sans +, ex Mexique : 5219991234567).
+
+name: Bootstrap WhatsApp session
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: whatsapp-listener
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci --omit=dev
+
+      - name: Restore existing session if any
+        uses: actions/cache/restore@v4
+        with:
+          path: .wwebjs_auth
+          key: wwebjs-auth-${{ github.run_id }}
+          restore-keys: |
+            wwebjs-auth-
+
+      - name: Run bootstrap (pairing code visible in logs)
+        env:
+          GROUP_NAME: ${{ vars.GROUP_NAME || 'PDC Dance Socials' }}
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LINK_PHONE: ${{ secrets.LINK_PHONE }}
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
+          ALLOW_LINK: '1'
+          READY_TIMEOUT_SECONDS: '300'
+          RUN_DURATION_SECONDS: '60'
+        run: node src/cron-run.js
+
+      - name: Save session cache
+        if: always() && hashFiles('.wwebjs_auth/**') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .wwebjs_auth
+          key: wwebjs-auth-${{ github.run_id }}
