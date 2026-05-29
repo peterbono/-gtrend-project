@@ -1,6 +1,0 @@
-pytrends
-logging
-pandas
-numpy
-Flask==2.2.3
-Werkzeug==2.2.3

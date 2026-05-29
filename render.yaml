@@ -4,8 +4,8 @@ services:
   - type: web
     name: playa-dance
     runtime: docker
-    dockerfilePath: ./playa-dance/Dockerfile
-    dockerContext: ./playa-dance
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     plan: starter
     healthCheckPath: /
     envVars:

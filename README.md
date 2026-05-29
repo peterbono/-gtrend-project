@@ -23,7 +23,6 @@ Groupe WhatsApp  ──(appareil lié, comme WhatsApp Web)──▶  Listener (w
 ## Démarrage rapide
 
 ```bash
-cd playa-dance
 npm install
 cp .env.example .env        # ajuste GROUP_NAME si besoin
 
@@ -64,8 +63,8 @@ Le QR se scanne **depuis le navigateur** sur `/qr`.
 
 ### Railway (le plus simple)
 
-1. [railway.app](https://railway.app) → *New Project → Deploy from GitHub repo* → ce repo.
-2. Root directory = `playa-dance` (Railway détecte le `Dockerfile`).
+1. [railway.app](https://railway.app) → *New Project → Deploy from GitHub repo* → ce repo (branche `main`).
+2. L'app est à la racine, Railway détecte le `Dockerfile` automatiquement (rien à régler).
 3. Variable `GROUP_NAME=PDC Dance Socials`. Génère un domaine public (Settings → Networking).
 4. Ajoute un **Volume** monté sur `/app/.wwebjs_auth` (garde la session WhatsApp entre redéploiements).
 5. Ouvre `https://ton-app.up.railway.app/qr` → **scanne le QR avec ton téléphone**. C'est en ligne 🎉
@@ -78,7 +77,7 @@ Le QR se scanne **depuis le navigateur** sur `/qr`.
 ### Tester l'image en local
 
 ```bash
-docker build -t playa-dance ./playa-dance
+docker build -t playa-dance .
 docker run -p 3000:3000 -e GROUP_NAME="PDC Dance Socials" playa-dance
 # puis http://localhost:3000/qr pour scanner, http://localhost:3000 pour les soirées
 ```
@@ -88,7 +87,6 @@ docker run -p 3000:3000 -e GROUP_NAME="PDC Dance Socials" playa-dance
 Vercel héberge **la web app + l'API de lecture** (le listener WhatsApp, lui, reste sur ta machine).
 
 ```bash
-cd playa-dance
 npx vercel          # connexion + déploiement → te donne une URL https://...vercel.app
 npx vercel --prod   # pour le déploiement de prod
 ```
