@@ -2,7 +2,7 @@ import 'dotenv/config';
 import pkg from 'whatsapp-web.js';
 import qrcode from 'qrcode-terminal';
 import { parseMessage } from './parser.js';
-import { upsertMany } from './store.js';
+import { upsertMany, storageMode } from './store.js';
 import { extractFromImage, visionEnabled } from './vision.js';
 
 const { Client, LocalAuth } = pkg;
@@ -21,6 +21,7 @@ client.on('qr', (qr) => {
 client.on('authenticated', () => console.log('✅ Authentifie. Session sauvegardee.'));
 client.on('ready', () => {
   console.log(`🚀 Connecte. J'ecoute le groupe : "${GROUP_NAME}"`);
+  console.log(`   Stockage : ${storageMode}${storageMode === 'redis' ? ' (lien Vercel live)' : ''}`);
   console.log(`   Vision flyers : ${visionEnabled() ? 'ACTIVEE' : 'desactivee (texte seul)'}`);
 });
 
@@ -43,7 +44,7 @@ async function handle(msg) {
     }
 
     if (events.length) {
-      upsertMany(events, { source });
+      await upsertMany(events, { source });
       console.log(`📥 ${events.length} evenement(s) capte(s) [${source}] : ${events.map((e) => e.day).join(', ')}`);
     }
   } catch (err) {

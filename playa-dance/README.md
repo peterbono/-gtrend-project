@@ -27,16 +27,19 @@ cd playa-dance
 npm install
 cp .env.example .env        # ajuste GROUP_NAME si besoin
 
-# 1) Tester la web app TOUT DE SUITE avec des données de démo (sans WhatsApp)
-npm run seed
-npm start                   # http://localhost:3000
+# 1) Brancher l'écoute WhatsApp en temps réel
+npm run listen              # affiche un QR -> scanne-le avec ton téléphone
 
-# 2) Brancher l'écoute WhatsApp en temps réel (dans un 2e terminal)
-npm run listen              # scanne le QR code affiché avec ton téléphone
+# 2) Voir les soirées captées (dans un 2e terminal)
+npm start                   # http://localhost:3000
 ```
 
 `npm run listen` ouvre une session WhatsApp Web liée à ton compte : scanne le QR depuis
-**WhatsApp > Appareils connectés**. La session est sauvegardée (pas besoin de re-scanner).
+**WhatsApp > Appareils connectés** sur ton téléphone. La session est sauvegardée (pas besoin
+de re-scanner ensuite). Dès qu'un message tombe dans le groupe, les soirées apparaissent.
+
+> Le scan du QR est la **seule** étape que toi seul peux faire : c'est la sécurité WhatsApp,
+> aucun service ne peut lier ton compte à ta place.
 
 ## Activer la vision (flyers image-only)
 
@@ -52,6 +55,32 @@ VISION_MODEL=claude-opus-4-8
 ```bash
 npm test    # teste le parser sur de vrais messages du groupe
 ```
+
+## 🚀 Déployer la web app sur Vercel (lien public)
+
+Vercel héberge **la web app + l'API de lecture** (le listener WhatsApp, lui, reste sur ta machine).
+
+```bash
+cd playa-dance
+npx vercel          # connexion + déploiement → te donne une URL https://...vercel.app
+npx vercel --prod   # pour le déploiement de prod
+```
+
+Pour que le lien public affiche les **vraies** données captées par ton listener, les deux
+partagent une base **Upstash Redis** (gratuit) :
+
+1. Crée une base Redis sur [upstash.com](https://upstash.com) (ou Vercel → Marketplace → Redis).
+   Récupère `UPSTASH_REDIS_REST_URL` et `UPSTASH_REDIS_REST_TOKEN`.
+2. **Côté Vercel** : ajoute ces 2 variables dans Project → Settings → Environment Variables, puis `npx vercel --prod`.
+3. **Côté listener** (ta machine, `.env`) : mets les **mêmes** 2 variables, puis `npm run listen`.
+
+Résultat : ton listener écrit dans Redis → l'app Vercel lit Redis → le lien public affiche
+les soirées en temps réel. Sans ces variables, le lien fonctionne mais reste vide (aucune donnée
+de démo).
+
+> Note : je ne peux pas générer le lien à ta place (il faut ton compte Vercel). La commande
+> `npx vercel` ci-dessus le crée en ~1 min. Le **listener** ne tourne pas sur Vercel (process
+> long + Chromium) : il reste sur ta machine ou un petit serveur toujours allumé.
 
 ## ⚠️ À savoir
 
@@ -72,4 +101,4 @@ npm test    # teste le parser sur de vrais messages du groupe
 | `src/store.js` | Stockage `data/events.json` (upsert / dedup) |
 | `src/server.js` | API + sert la web app |
 | `public/` | Front mobile-first « Soirées du jour » |
-| `src/seed.js` | Données de démo pour tester sans WhatsApp |
+| `api/` | Fonctions serverless (lecture) pour le déploiement Vercel |

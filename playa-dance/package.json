@@ -6,7 +6,6 @@
   "scripts": {
     "start": "node src/server.js",
     "listen": "node src/listener.js",
-    "seed": "node src/seed.js",
     "test": "node --test"
   },
   "engines": {
@@ -16,9 +15,10 @@
     "dotenv": "^16.6.1",
     "express": "^4.22.2",
     "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "^1.26.0"
+    "whatsapp-web.js": "^1.34.7"
   },
   "optionalDependencies": {
-    "@anthropic-ai/sdk": "^0.32.1"
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@upstash/redis": "^1.38.0"
   }
 }
