@@ -55,7 +55,60 @@ VISION_MODEL=claude-opus-4-8
 npm test    # teste le parser sur de vrais messages du groupe
 ```
 
-## ☁️ Hébergement 100 % cloud, toujours allumé (Railway / Render) — recommandé
+## 🆓 Hébergement gratuit via cron GitHub Actions (recommandé)
+
+Le listener WhatsApp tourne **par fenêtres de ~8 min, toutes les heures**, déclenché par
+GitHub Actions. La session WhatsApp est persistée entre les runs via le cache du runner.
+Les événements parsés sont écrits dans Upstash Redis ; la web app sur Vercel les affiche.
+
+**Compromis** : entre 2 fenêtres tu peux avoir jusqu'à ~50 min sans capture en temps réel.
+À la reconnexion, whatsapp-web.js resync l'historique des messages manqués, donc rien n'est
+perdu tant que la session reste valide (~plusieurs jours).
+
+### Bootstrap (à faire une seule fois)
+
+1. Crée une base Redis gratuite sur [upstash.com](https://upstash.com) → onglet *REST API*
+   → copie `UPSTASH_REDIS_REST_URL` et `UPSTASH_REDIS_REST_TOKEN`.
+2. Sur le repo GitHub → *Settings → Secrets and variables → Actions* :
+   - secret `UPSTASH_REDIS_REST_URL`
+   - secret `UPSTASH_REDIS_REST_TOKEN`
+   - secret `LINK_PHONE` (numéro E.164 sans `+`, ex Mexique : `5219991234567`)
+   - secret `ANTHROPIC_API_KEY` (optionnel, pour la vision flyers)
+   - variable `GROUP_NAME` (optionnel, défaut `PDC Dance Socials`)
+3. *Actions* → workflow **Bootstrap WhatsApp session** → *Run workflow* → ouvre les logs en direct.
+4. Quand le code de liaison s'affiche (gros et encadré dans les logs), va dans WhatsApp sur
+   ton téléphone : *Réglages → Appareils connectés → Lier un appareil → Lier avec numéro de téléphone*
+   et tape le code. Tu as ~60 s.
+5. Le workflow continue jusqu'à *ready*, écoute 60 s puis sauve la session dans le cache. Fini.
+
+### Mode normal (cron horaire)
+
+Le workflow **WhatsApp listener (cron)** se lance automatiquement chaque heure à `:00`.
+Tu peux aussi le déclencher manuellement (*Actions → Run workflow*) pour tester.
+À chaque run : restore session → ready (~30-60 s) → écoute 8 min → flush Upstash → sauve session → exit.
+
+### Web app sur Vercel
+
+```bash
+npx vercel link        # connecte le repo
+npx vercel env add UPSTASH_REDIS_REST_URL production
+npx vercel env add UPSTASH_REDIS_REST_TOKEN production
+npx vercel --prod
+```
+
+La web app lit la même base Redis que le listener → les soirées captées par le cron
+apparaissent sur le lien public.
+
+### Limites
+
+- Comptes WhatsApp peuvent être bannis pour usage automatisé : préfère un **numéro dédié**
+  ajouté au groupe (pas ton perso).
+- Si la session WhatsApp expire (rare mais arrive), relance le workflow Bootstrap.
+- Repo public requis pour Actions minutes illimitées (sinon 2000 min/mois suffisent largement :
+  10 min × 24 runs × 30 j = 7200 min, donc passe le repo en public OU réduis le cron à
+  toutes les 2-3 h).
+
+## ☁️ Hébergement 100 % cloud, toujours allumé (Railway / Render / Fly) — payant
 
 Le moyen le plus simple d'avoir un lien public **sans laisser ton PC allumé** : héberger
 **listener + web app dans un seul service** (entrée `src/app.js`, via le `Dockerfile` fourni).
@@ -68,6 +121,24 @@ Le QR se scanne **depuis le navigateur** sur `/qr`.
 3. Variable `GROUP_NAME=PDC Dance Socials`. Génère un domaine public (Settings → Networking).
 4. Ajoute un **Volume** monté sur `/app/.wwebjs_auth` (garde la session WhatsApp entre redéploiements).
 5. Ouvre `https://ton-app.up.railway.app/qr` → **scanne le QR avec ton téléphone**. C'est en ligne 🎉
+
+### Fly.io
+
+`fly.toml` est fourni à la racine (Dockerfile + volume persistant pour la session WhatsApp).
+
+```bash
+fly auth login                              # 1) connexion (ouvre le navigateur)
+fly launch --copy-config --no-deploy        # 2) crée l'app à partir de fly.toml
+fly volumes create wwebjs_auth --region mia --size 1   # 3) volume pour la session
+fly deploy                                  # 4) build + deploy
+fly open /qr                                # 5) scanne le QR depuis le navigateur
+```
+
+Region par défaut : `mia` (Miami — proche de la Caraïbe/Mexique). Modifie `primary_region`
+dans `fly.toml` si besoin. Le listener doit tourner H24, donc `auto_stop_machines = "off"`
+et `min_machines_running = 1` sont déjà configurés.
+
+> Fly.io facture au moins ~5 $/mois (plus de free tier depuis fin 2024).
 
 ### Render
 

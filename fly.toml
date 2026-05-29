@@ -1,0 +1,44 @@
+# Fly.io config. Le listener WhatsApp doit rester allume H24 (pas d'auto-stop).
+# Le volume persiste la session WhatsApp entre redeploys (sinon QR a re-scanner a chaque deploy).
+
+app = "playa-dance"
+primary_region = "mia"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  GROUP_NAME = "PDC Dance Socials"
+  NODE_ENV = "production"
+  PORT = "3000"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 100
+    hard_limit = 200
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "60s"
+    method = "GET"
+    path = "/"
+
+[[mounts]]
+  source = "wwebjs_auth"
+  destination = "/app/.wwebjs_auth"
+  initial_size = "1gb"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1

@@ -1,0 +1,73 @@
+# Ecoute WhatsApp en cron (gratuit via GitHub Actions).
+# - cron horaire, fenetre ~8 min, max 12 min de runner.
+# - .wwebjs_auth persiste via le cache du runner entre les runs.
+# - les evenements parses sont ecrits dans Upstash Redis (lu ensuite par la web app Vercel).
+#
+# Bootstrap : il faut scanner le QR UNE FOIS en local puis seeder le cache (voir README).
+
+name: WhatsApp listener (cron)
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      run_duration_seconds:
+        description: "Duree d'ecoute (s) apres ready"
+        required: false
+        default: '480'
+
+concurrency:
+  group: whatsapp-listener
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  listen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci --omit=dev
+
+      - name: Restore WhatsApp session cache
+        id: restore-session
+        uses: actions/cache/restore@v4
+        with:
+          path: .wwebjs_auth
+          key: wwebjs-auth-${{ github.run_id }}
+          restore-keys: |
+            wwebjs-auth-
+
+      - name: Fail fast if no seeded session
+        if: steps.restore-session.outputs.cache-matched-key == ''
+        run: |
+          echo "::error::Aucune session .wwebjs_auth dans le cache. Bootstrap requis : voir README (scan QR local + push du cache GH)."
+          exit 1
+
+      - name: Run listener window
+        env:
+          GROUP_NAME: ${{ vars.GROUP_NAME || 'PDC Dance Socials' }}
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
+          RUN_DURATION_SECONDS: ${{ inputs.run_duration_seconds || '480' }}
+          READY_TIMEOUT_SECONDS: '90'
+        run: node src/cron-run.js
+
+      - name: Save WhatsApp session cache
+        if: always() && hashFiles('.wwebjs_auth/**') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .wwebjs_auth
+          key: wwebjs-auth-${{ github.run_id }}
