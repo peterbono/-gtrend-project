@@ -5,9 +5,11 @@ import { extractFromImage, visionEnabled } from './vision.js';
 
 const { Client, LocalAuth } = pkg;
 
-// Demarre l'ecoute WhatsApp. Callbacks optionnels : onQr(qr), onReady().
-export function startListener({ onQr, onReady } = {}) {
+// Demarre l'ecoute WhatsApp. Callbacks optionnels : onQr(qr), onPairingCode(code), onReady().
+export function startListener({ onQr, onPairingCode, onReady } = {}) {
   const GROUP_NAME = process.env.GROUP_NAME || 'PDC Dance Socials';
+  // Numero (avec indicatif, ex 5219991234567) pour lier SANS QR, via un code a taper.
+  const pairPhone = (process.env.LINK_PHONE || '').replace(/\D/g, '');
 
   const puppeteer = { args: ['--no-sandbox', '--disable-setuid-sandbox'] };
   if (process.env.PUPPETEER_EXECUTABLE_PATH) {
@@ -19,7 +21,24 @@ export function startListener({ onQr, onReady } = {}) {
     puppeteer,
   });
 
-  client.on('qr', (qr) => onQr?.(qr));
+  let pairingRequested = false;
+  client.on('qr', async (qr) => {
+    if (pairPhone) {
+      // Liaison par code telephone (ideal sur mobile, pas de QR a scanner).
+      if (pairingRequested) return;
+      pairingRequested = true;
+      try {
+        const code = await client.requestPairingCode(pairPhone);
+        onPairingCode?.(code);
+      } catch (e) {
+        console.error('Code de liaison echoue, repli sur QR :', e.message);
+        pairingRequested = false;
+        onQr?.(qr);
+      }
+    } else {
+      onQr?.(qr);
+    }
+  });
   client.on('authenticated', () => console.log('✅ Authentifie. Session sauvegardee.'));
   client.on('ready', () => {
     console.log(`🚀 Connecte. J'ecoute le groupe : "${GROUP_NAME}"`);
