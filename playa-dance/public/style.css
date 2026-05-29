@@ -1,0 +1,79 @@
+:root {
+  --bg: #0f1021;
+  --card: #1b1c33;
+  --accent: #ff7a3d;
+  --accent2: #ffd23d;
+  --text: #f4f4fb;
+  --muted: #9a9ac0;
+  --social: #2dd4a7;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 16px 40px;
+}
+header { text-align: center; padding: 28px 0 12px; }
+h1 { font-size: 2rem; }
+.sub { color: var(--muted); font-size: .9rem; margin-top: 4px; }
+
+.days {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 12px 0;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 5;
+}
+.days button {
+  flex: 0 0 auto;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 16px;
+  background: var(--card);
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+.days button.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #1a1a2e;
+}
+
+.list { display: flex; flex-direction: column; gap: 16px; }
+.loading, .empty { color: var(--muted); text-align: center; padding: 40px 0; }
+
+.card {
+  background: var(--card);
+  border-radius: 18px;
+  padding: 18px;
+  border: 1px solid #2a2b4a;
+}
+.card h2 { font-size: 1.2rem; }
+.venue {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent2);
+  font-size: .95rem;
+  margin-top: 4px;
+}
+.venue a { color: var(--accent2); text-decoration: none; }
+
+.acts { list-style: none; margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.acts li { display: flex; gap: 12px; align-items: baseline; }
+.time {
+  flex: 0 0 64px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.acts li.social .time { color: var(--social); }
+.acts li.social .name::after { content: " 🎉"; }
+
+footer { text-align: center; color: var(--muted); font-size: .75rem; margin-top: 28px; }
