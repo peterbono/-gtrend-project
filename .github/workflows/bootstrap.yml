@@ -44,7 +44,7 @@ jobs:
           GROUP_NAME: ${{ vars.GROUP_NAME || 'PDC Dance Socials' }}
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           LINK_PHONE: ${{ secrets.LINK_PHONE }}
           PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
           ALLOW_LINK: '1'

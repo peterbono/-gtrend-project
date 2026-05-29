@@ -1,6 +1,9 @@
-// Extraction d'evenements depuis une IMAGE de flyer via Claude vision.
-// OPTIONNEL : ne s'active que si ANTHROPIC_API_KEY est defini.
+// Extraction d'evenements depuis une IMAGE de flyer via Google Gemini vision.
+// OPTIONNEL : ne s'active que si GEMINI_API_KEY est defini.
+// Tier gratuit Gemini : 15 RPM, 1500 RPD (largement suffisant pour ~20 flyers/jour).
 // Sert de secours pour les messages qui ne contiennent qu'une image (sans texte).
+
+import { DAY_INDEX } from './days.js';
 
 const PROMPT = `Tu lis un flyer de soirees de danse a Playa del Carmen (Mexique).
 Extrais TOUS les jours/evenements visibles. Reponds UNIQUEMENT en JSON, un tableau:
@@ -10,39 +13,49 @@ Extrais TOUS les jours/evenements visibles. Reponds UNIQUEMENT en JSON, un table
 - venue = le lieu (📍). Si absent, null.
 Si aucun evenement, reponds [].`;
 
-import { DAY_INDEX } from './days.js';
-
 export function visionEnabled() {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+  return Boolean(process.env.GEMINI_API_KEY);
 }
 
 export async function extractFromImage(base64, mediaType = 'image/jpeg') {
   if (!visionEnabled()) return [];
-  let Anthropic;
-  try {
-    ({ default: Anthropic } = await import('@anthropic-ai/sdk'));
-  } catch {
-    console.warn('[vision] @anthropic-ai/sdk non installe, etape ignoree.');
-    return [];
-  }
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const model = process.env.VISION_MODEL || 'claude-opus-4-8';
+  const model = process.env.VISION_MODEL || 'gemini-2.0-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
 
-  const resp = await client.messages.create({
-    model,
-    max_tokens: 1500,
-    messages: [
+  const body = {
+    contents: [
       {
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-          { type: 'text', text: PROMPT },
+        parts: [
+          { text: PROMPT },
+          { inline_data: { mime_type: mediaType, data: base64 } },
         ],
       },
     ],
-  });
+    generationConfig: {
+      response_mime_type: 'application/json',
+      temperature: 0,
+      max_output_tokens: 1500,
+    },
+  };
 
-  const text = resp.content.find((c) => c.type === 'text')?.text || '[]';
+  let text = '[]';
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      console.warn(`[vision] Gemini ${resp.status}:`, (await resp.text()).slice(0, 200));
+      return [];
+    }
+    const data = await resp.json();
+    text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+  } catch (err) {
+    console.warn('[vision] requete Gemini echouee:', err.message);
+    return [];
+  }
+
   const json = text.slice(text.indexOf('['), text.lastIndexOf(']') + 1);
   let raw;
   try {
@@ -51,7 +64,6 @@ export async function extractFromImage(base64, mediaType = 'image/jpeg') {
     console.warn('[vision] reponse non parsable:', text.slice(0, 120));
     return [];
   }
-  // Normalise vers le meme format que le parser texte.
   return raw
     .filter((e) => e && DAY_INDEX[e.day?.toUpperCase?.()] !== undefined)
     .map((e) => ({
