@@ -18,7 +18,7 @@ Groupe WhatsApp  ──(appareil lié, comme WhatsApp Web)──▶  Listener (w
 
 - **Texte d'abord** : les messages structurés (`JUEVES – … 7p … 📍 lieu`) sont parsés gratuitement.
 - **Vision en secours** : si un message ne contient **qu'une image** (flyer sans texte) et qu'une
-  clé API Anthropic est configurée, le flyer est lu par Claude. Désactivé par défaut.
+  clé API Google Gemini est configurée, le flyer est lu par Gemini Flash (free tier). Désactivé par défaut.
 
 ## Démarrage rapide
 
@@ -40,13 +40,18 @@ de re-scanner ensuite). Dès qu'un message tombe dans le groupe, les soirées ap
 > Le scan du QR est la **seule** étape que toi seul peux faire : c'est la sécurité WhatsApp,
 > aucun service ne peut lier ton compte à ta place.
 
-## Activer la vision (flyers image-only)
+## Activer la vision (flyers image-only) — GRATUIT
 
-Dans `.env` :
+Pour parser les messages qui ne contiennent qu'une image (flyer sans texte),
+on utilise **Google Gemini Flash** : free tier 15 req/min, 1500 req/jour
+(largement assez pour ~20 flyers/jour).
+
+1. Cree une cle sur [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) (un clic, gratuit).
+2. Dans `.env` (local) ou secrets GitHub Actions (cron) :
 
 ```
-ANTHROPIC_API_KEY=sk-ant-...
-VISION_MODEL=claude-opus-4-8
+GEMINI_API_KEY=AIza...
+VISION_MODEL=gemini-2.0-flash    # optionnel
 ```
 
 ## Tests
@@ -73,7 +78,7 @@ perdu tant que la session reste valide (~plusieurs jours).
    - secret `UPSTASH_REDIS_REST_URL`
    - secret `UPSTASH_REDIS_REST_TOKEN`
    - secret `LINK_PHONE` (numéro E.164 sans `+`, ex Mexique : `5219991234567`)
-   - secret `ANTHROPIC_API_KEY` (optionnel, pour la vision flyers)
+   - secret `GEMINI_API_KEY` (optionnel, pour la vision flyers — free tier Google AI Studio)
    - variable `GROUP_NAME` (optionnel, défaut `PDC Dance Socials`)
 3. *Actions* → workflow **Bootstrap WhatsApp session** → *Run workflow* → ouvre les logs en direct.
 4. Quand le code de liaison s'affiche (gros et encadré dans les logs), va dans WhatsApp sur
