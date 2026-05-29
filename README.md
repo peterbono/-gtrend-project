@@ -69,6 +69,24 @@ Le QR se scanne **depuis le navigateur** sur `/qr`.
 4. Ajoute un **Volume** monté sur `/app/.wwebjs_auth` (garde la session WhatsApp entre redéploiements).
 5. Ouvre `https://ton-app.up.railway.app/qr` → **scanne le QR avec ton téléphone**. C'est en ligne 🎉
 
+### Fly.io
+
+`fly.toml` est fourni à la racine (Dockerfile + volume persistant pour la session WhatsApp).
+
+```bash
+fly auth login                              # 1) connexion (ouvre le navigateur)
+fly launch --copy-config --no-deploy        # 2) crée l'app à partir de fly.toml
+fly volumes create wwebjs_auth --region mia --size 1   # 3) volume pour la session
+fly deploy                                  # 4) build + deploy
+fly open /qr                                # 5) scanne le QR depuis le navigateur
+```
+
+Region par défaut : `mia` (Miami — proche de la Caraïbe/Mexique). Modifie `primary_region`
+dans `fly.toml` si besoin. Le listener doit tourner H24, donc `auto_stop_machines = "off"`
+et `min_machines_running = 1` sont déjà configurés.
+
+> Fly.io facture au moins ~5 $/mois (plus de free tier depuis fin 2024).
+
 ### Render
 
 `render.yaml` (Blueprint) est fourni. New → Blueprint → ce repo. Puis `…/qr` pour scanner.
