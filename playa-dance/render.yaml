@@ -1,0 +1,22 @@
+# Blueprint Render. Sur le dashboard : New > Blueprint > pointe ce repo.
+# NB : un disque persistant (pour garder la session WhatsApp) requiert un plan payant.
+services:
+  - type: web
+    name: playa-dance
+    runtime: docker
+    dockerfilePath: ./playa-dance/Dockerfile
+    dockerContext: ./playa-dance
+    plan: starter
+    healthCheckPath: /
+    envVars:
+      - key: GROUP_NAME
+        value: PDC Dance Socials
+      # Optionnel : decommente et renseigne pour partager avec un lien Vercel.
+      # - key: UPSTASH_REDIS_REST_URL
+      #   sync: false
+      # - key: UPSTASH_REDIS_REST_TOKEN
+      #   sync: false
+    disk:
+      name: wwebjs-auth
+      mountPath: /app/.wwebjs_auth
+      sizeGB: 1

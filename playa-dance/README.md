@@ -56,7 +56,34 @@ VISION_MODEL=claude-opus-4-8
 npm test    # teste le parser sur de vrais messages du groupe
 ```
 
-## 🚀 Déployer la web app sur Vercel (lien public)
+## ☁️ Hébergement 100 % cloud, toujours allumé (Railway / Render) — recommandé
+
+Le moyen le plus simple d'avoir un lien public **sans laisser ton PC allumé** : héberger
+**listener + web app dans un seul service** (entrée `src/app.js`, via le `Dockerfile` fourni).
+Le QR se scanne **depuis le navigateur** sur `/qr`.
+
+### Railway (le plus simple)
+
+1. [railway.app](https://railway.app) → *New Project → Deploy from GitHub repo* → ce repo.
+2. Root directory = `playa-dance` (Railway détecte le `Dockerfile`).
+3. Variable `GROUP_NAME=PDC Dance Socials`. Génère un domaine public (Settings → Networking).
+4. Ajoute un **Volume** monté sur `/app/.wwebjs_auth` (garde la session WhatsApp entre redéploiements).
+5. Ouvre `https://ton-app.up.railway.app/qr` → **scanne le QR avec ton téléphone**. C'est en ligne 🎉
+
+### Render
+
+`render.yaml` (Blueprint) est fourni. New → Blueprint → ce repo. Puis `…/qr` pour scanner.
+(Le disque persistant pour la session WhatsApp nécessite un plan payant.)
+
+### Tester l'image en local
+
+```bash
+docker build -t playa-dance ./playa-dance
+docker run -p 3000:3000 -e GROUP_NAME="PDC Dance Socials" playa-dance
+# puis http://localhost:3000/qr pour scanner, http://localhost:3000 pour les soirées
+```
+
+## 🚀 Alternative : web app sur Vercel (lien public)
 
 Vercel héberge **la web app + l'API de lecture** (le listener WhatsApp, lui, reste sur ta machine).
 
@@ -87,9 +114,10 @@ de démo).
 - **WhatsApp n'a pas d'API officielle** pour lire un groupe : on passe par un *appareil lié*.
   C'est ton compte / ton groupe (usage légitime) mais c'est techniquement contre les CGU de
   WhatsApp. Risque faible de bannissement — préfère idéalement un **numéro dédié** ajouté au groupe.
-- **Ça doit tourner en permanence** sur une machine allumée (ton PC, un Raspberry Pi, ou un petit
-  VPS). Le conteneur cloud où ce code a été écrit est éphémère.
-- Le stockage est un simple fichier `data/events.json` (aucune base à installer).
+- **Le listener doit tourner en permanence** : soit sur une machine à toi (PC, Raspberry Pi),
+  soit hébergé (Railway / Render — voir plus haut, le plus simple).
+- Le stockage est soit un fichier `data/events.json` (local, zéro config), soit Upstash Redis
+  (partagé, pour un lien public live).
 
 ## Structure
 
@@ -97,8 +125,12 @@ de démo).
 |---|---|
 | `src/parser.js` | Extrait jour / heure / lieu / url depuis le texte |
 | `src/vision.js` | Secours : lit un flyer image via Claude (optionnel) |
-| `src/listener.js` | Écoute WhatsApp en temps réel |
-| `src/store.js` | Stockage `data/events.json` (upsert / dedup) |
-| `src/server.js` | API + sert la web app |
-| `public/` | Front mobile-first « Soirées du jour » |
+| `src/whatsapp.js` | Cœur de l'écoute WhatsApp (reconnexion auto) |
+| `src/store.js` | Stockage unifié : Upstash Redis si configuré, sinon JSON local |
+| `src/web.js` | Routes API + sert le front |
+| `src/listener.js` | Entrée **locale** : écoute + QR dans le terminal |
+| `src/server.js` | Entrée **locale** : web app seule |
+| `src/app.js` | Entrée **cloud** : web + écoute + QR sur `/qr` (1 process) |
+| `Dockerfile` / `render.yaml` | Hébergement cloud (Railway / Render) |
 | `api/` | Fonctions serverless (lecture) pour le déploiement Vercel |
+| `public/` | Front mobile-first « Soirées du jour » |
