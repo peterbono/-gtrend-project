@@ -1,0 +1,73 @@
+# Une seule execution : recupere la session chiffree depuis la release seed-session-v1,
+# la dechiffre avec le secret SESSION_DECRYPT_KEY, puis l'enregistre dans le cache GH Actions
+# (cle wwebjs-auth-<run_id>) pour que le workflow cron horaire la restaure.
+# Le workflow supprime la release ET le secret apres usage pour limiter la surface.
+
+name: Seed WhatsApp session cache (one-shot)
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag de la release contenant wwebjs-auth.enc"
+        required: false
+        default: "seed-session-v1"
+      cleanup:
+        description: "Supprimer la release + le secret apres le seed (recommande)"
+        required: false
+        default: "true"
+
+concurrency:
+  group: whatsapp-listener
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download encrypted session from release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${{ inputs.release_tag }}" \
+            --repo "${{ github.repository }}" \
+            --pattern 'wwebjs-auth.enc' \
+            --dir .
+
+      - name: Decrypt and extract
+        env:
+          SESSION_DECRYPT_KEY: ${{ secrets.SESSION_DECRYPT_KEY }}
+        run: |
+          mkdir -p .wwebjs_auth
+          printf '%s' "$SESSION_DECRYPT_KEY" > /tmp/key
+          openssl enc -d -aes-256-cbc -pbkdf2 -in wwebjs-auth.enc -out wwebjs-auth.tar.gz -pass file:/tmp/key
+          rm -f /tmp/key wwebjs-auth.enc
+          tar xzf wwebjs-auth.tar.gz
+          rm -f wwebjs-auth.tar.gz
+          echo "Session extracted:"
+          du -sh .wwebjs_auth/
+          ls -la .wwebjs_auth/ | head -5
+
+      - name: Save session to GH cache
+        uses: actions/cache/save@v4
+        with:
+          path: .wwebjs_auth
+          key: wwebjs-auth-${{ github.run_id }}
+
+      - name: Cleanup release + secret
+        if: inputs.cleanup == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete "${{ inputs.release_tag }}" \
+            --repo "${{ github.repository }}" \
+            --cleanup-tag --yes || true
+          # Note : suppression du secret necessite admin token, pas le github.token par defaut.
+          echo "Release supprimee. Pense a retirer manuellement le secret SESSION_DECRYPT_KEY."
