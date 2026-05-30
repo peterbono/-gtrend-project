@@ -56,14 +56,18 @@ Dress code: Elegant Tango Vibes.
 https://maps.app.goo.gl/e3gmffqsz3UrS7gY6`,
 
   // DOMINGO — Latin Breeze Sunday @ MEXCALLI
+  // Note : Le message dit "2 clases al mismo tiempo" — donc 2 profs paralleles
+  // par creneau. On les expose comme activites distinctes.
   `DOMINGO - Latin Breeze Sunday
 
 La fiesta latina más grande de la Riviera Maya llega a MEXCALLI
 Salsa, Bachata, Social Dance Internacional.
 Ambiente elegante, buena vibra.
 
-19:00 Clase de Salsa (Beginner & Intermediate)
-20:00 Clase de Bachata (Beginner & Intermediate)
+19:00 Clase de Salsa Beginner
+19:00 Clase de Salsa Intermediate/Advanced
+20:00 Clase de Bachata Beginner
+20:00 Clase de Bachata Intermediate/Advanced
 21:00 Social Dance
 📍 Mexcalli, 5th Ave btw 4th & 6th St, Playa del Carmen`,
 ];
