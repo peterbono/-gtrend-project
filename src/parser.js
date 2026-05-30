@@ -1,9 +1,30 @@
 import { detectDay } from './days.js';
 
-// Retire emojis / puces / espaces en debut de ligne.
+// Retire emojis / puces / espaces / chiffres "1️⃣ 2️⃣ ..." en debut de ligne.
+// Le sequence "N️⃣" est la "keycap" composite (ex: 1️⃣) — souvent
+// utilisee pour numeroter les items dans une liste WhatsApp.
 function stripLead(line) {
   return line
-    .replace(/^[\s✅\u{1F525}\u{1F31F}\u{1F305}\u{1F4A5}\u{1F483}✨•\-–·*]+/u, '')
+    .replace(/^([\d]️⃣|️⃣)+/u, '') // keycaps "1️⃣"
+    .replace(/^[\s✅\u{1F525}\u{1F31F}\u{1F305}\u{1F4A5}\u{1F483}✨•\-–·*►▶▪◆▫○●–—]+/u, '')
+    .trim();
+}
+
+// Markdown WhatsApp : *gras* / _italique_ / ~barre~ — on garde le texte, on vire la syntaxe.
+function stripMarkdown(s) {
+  return (s || '')
+    .replace(/\*+([^*]+?)\*+/g, '$1')
+    .replace(/_+([^_]+?)_+/g, '$1')
+    .replace(/~+([^~]+?)~+/g, '$1')
+    .replace(/&amp;/g, '&')
+    .trim();
+}
+
+// Strippe filler espagnols/francais frequents devant un nom de lieu ou de titre.
+function stripFillerPrefix(s) {
+  return (s || '')
+    .replace(/^\s*(lugar|lieu|place|venue|donde|where|adresse|address|direccion|dirección)\s*[:：]\s*/i, '')
+    .replace(/^\s*[★⭐✨🎉]+\s*/u, '')
     .trim();
 }
 
@@ -16,8 +37,11 @@ function parseTime(line) {
   const m = clean.match(TIME_RE);
   if (!m) return null;
   const time = m[1].replace(/\s+/g, '').toLowerCase();
-  const name = clean.slice(m[0].length).replace(/^[\s:–-]+/, '').trim();
-  if (!name) return null; // une heure seule sans activite = pas fiable
+  let name = clean.slice(m[0].length).replace(/^[\s:–-]+/, '').trim();
+  name = stripMarkdown(name);
+  // Nettoie les keycaps numerotes residuels au milieu : "5️⃣pm" etc.
+  name = name.replace(/[\d]️⃣/gu, '').replace(/️⃣/gu, '').replace(/\s+/g, ' ').trim();
+  if (!name || name.length < 2) return null;
   return { time, name };
 }
 
@@ -61,6 +85,8 @@ export function parseMessage(text) {
       const dash = line.split(/[–-]/);
       if (dash.length > 1) title = dash.slice(1).join('-').trim();
       title = title.replace(/[\u{1F300}-\u{1FAFF}☀-➿]/gu, '').trim();
+      title = stripMarkdown(title);
+      title = stripFillerPrefix(title);
       // Garde le titre uniquement s'il a l'air d'un vrai titre (pas un timestamp ou une URL).
       if (!looksLikeTitle(title)) title = '';
       current = {
@@ -77,7 +103,7 @@ export function parseMessage(text) {
     if (!current) continue; // lignes avant le premier jour : ignorees
 
     if (line.includes(PIN)) {
-      const afterPin = line.split(PIN)[1].replace(/^[\s:]+/, '').trim();
+      const afterPin = stripFillerPrefix(stripMarkdown(line.split(PIN)[1].replace(/^[\s:]+/, '').trim()));
       if (afterPin) {
         if (ONLY_URL_RE.test(afterPin)) {
           // 📍 https://maps... = lien Maps du lieu, pas le nom du venue.
