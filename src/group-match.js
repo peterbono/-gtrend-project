@@ -15,6 +15,9 @@ const norm = (s) =>
   (s || '')
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
+    // unifie apostrophes/guillemets typographiques vers leurs equivalents ASCII
+    .replace(/[‘’‚‛]/g, "'")
+    .replace(/[“”„‟]/g, '"')
     .toLowerCase()
     .trim();
 

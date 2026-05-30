@@ -59,13 +59,17 @@ client.on('ready', async () => {
     const chats = await client.getChats();
     const groups = chats.filter((c) => c.isGroup);
     const matched = findGroups(chats, GROUP_NAME);
+    if (matched.length < targets.length) {
+      const missing = targets.filter((t) => !matched.some((g) => g.name === t));
+      console.warn(`⚠ ${matched.length}/${targets.length} groupes matches. Manquants: ${missing.map((m) => `"${m}"`).join(', ')}`);
+      const dance = groups.filter((c) => /(dance|baile|salsa|bachata|kizomba|playa|mexicano|mexique|mexico)/i.test(c.name || ''));
+      if (dance.length) {
+        console.warn('Candidats dance/baile (debug) :');
+        dance.forEach((c) => console.warn(`  • "${c.name}"`));
+      }
+    }
     if (!matched.length) {
       console.error(`Aucun groupe trouve parmi ${chats.length} chats (${groups.length} groupes).`);
-      const dance = groups.filter((c) => /(dance|baile|salsa|bachata|kizomba)/i.test(c.name || ''));
-      if (dance.length) {
-        console.error('Groupes contenant un mot lie a la danse :');
-        dance.forEach((c) => console.error(`  • "${c.name}"`));
-      }
       return shutdown('group-not-found', 3);
     }
     console.log(`✓ ${matched.length} groupe(s) trouve(s) : ${matched.map((g) => `"${g.name}"`).join(', ')}`);
