@@ -71,11 +71,37 @@ function timeStart(t) {
   return m ? Number(m[1]) : null;
 }
 
+// Cle semantique : meme heure + meme style + meme niveau = duplicat (FR/EN/ES).
+// "Clases de Salsa Principiante 19:00" == "Salsa Classes Beginner 19:00".
+const STYLE_RE_S = /\b(salsa|bachata|kizomba|zouk|merengue|tango|cha[\s-]?cha)\b/i;
+const LEVEL_MAP = {
+  beginner: 'beg', beg: 'beg',
+  principiante: 'beg', principiantes: 'beg',
+  debutant: 'beg', débutant: 'beg', debutants: 'beg',
+  intermediate: 'int', int: 'int',
+  intermedio: 'int', intermedios: 'int',
+  advanced: 'adv', adv: 'adv',
+  avanzado: 'adv', avanzados: 'adv',
+};
+function styleLevelKey(act) {
+  const name = (act?.name || '').toLowerCase();
+  const styleM = name.match(STYLE_RE_S);
+  const style = styleM ? styleM[1].toLowerCase().replace(/\s/g, '') : '';
+  if (!style) return null;
+  // Cherche un mot de niveau dans le nom
+  let level = '';
+  for (const word of name.split(/[\s,();\-–]+/)) {
+    if (LEVEL_MAP[word]) { level = LEVEL_MAP[word]; break; }
+  }
+  return `${normTime(act.time)}|${style}|${level}`;
+}
+
 function mergeActivities(a = [], b = []) {
   const all = [...(a || []), ...(b || [])];
   const out = [];
-  const seenSocialStarts = new Map(); // start -> index dans out
-  const seenWorkshops = new Set();    // cle exacte time|name
+  const seenSocialStarts = new Map();
+  const seenWorkshops = new Map();    // cle exacte time|name → idx
+  const seenSemantic = new Map();     // cle time|style|level → idx (dedup FR/EN)
 
   for (const act of all) {
     if (isSocialAct(act)) {
@@ -83,7 +109,6 @@ function mergeActivities(a = [], b = []) {
       if (start != null && seenSocialStarts.has(start)) {
         const idx = seenSocialStarts.get(start);
         const prev = out[idx];
-        // Garde le plus informatif : plage horaire plus large, nom plus complet.
         const time = (act.time || '').length > (prev.time || '').length ? act.time : prev.time;
         const name = (act.name || '').length > (prev.name || '').length ? act.name : prev.name;
         out[idx] = { time, name };
@@ -91,12 +116,23 @@ function mergeActivities(a = [], b = []) {
       }
       out.push(act);
       if (start != null) seenSocialStarts.set(start, out.length - 1);
-    } else {
-      const k = `${normTime(act.time)}|${(act.name || '').toLowerCase().trim().replace(/\s+/g, ' ')}`;
-      if (seenWorkshops.has(k)) continue;
-      seenWorkshops.add(k);
-      out.push(act);
+      continue;
     }
+    // Workshop : dedup exact + dedup semantique.
+    const exactKey = `${normTime(act.time)}|${(act.name || '').toLowerCase().trim().replace(/\s+/g, ' ')}`;
+    if (seenWorkshops.has(exactKey)) continue;
+    const semKey = styleLevelKey(act);
+    if (semKey && seenSemantic.has(semKey)) {
+      // Garde le nom le plus long (souvent plus informatif).
+      const idx = seenSemantic.get(semKey);
+      if ((act.name || '').length > (out[idx].name || '').length) {
+        out[idx] = act;
+      }
+      continue;
+    }
+    out.push(act);
+    seenWorkshops.set(exactKey, out.length - 1);
+    if (semKey) seenSemantic.set(semKey, out.length - 1);
   }
   return out;
 }
