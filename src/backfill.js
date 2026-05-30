@@ -55,11 +55,25 @@ client.on('ready', async () => {
 
   try {
     const chats = await client.getChats();
-    const group = chats.find((c) => c.isGroup && c.name === GROUP_NAME);
+    const groups = chats.filter((c) => c.isGroup);
+    const norm = (s) => (s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+    const target = norm(GROUP_NAME);
+    let group = groups.find((c) => c.name === GROUP_NAME);
+    if (!group) group = groups.find((c) => norm(c.name) === target);
+    if (!group) group = groups.find((c) => norm(c.name).includes(target));
     if (!group) {
-      console.error(`Groupe "${GROUP_NAME}" introuvable parmi ${chats.length} chats.`);
+      console.error(`Groupe "${GROUP_NAME}" introuvable parmi ${chats.length} chats (${groups.length} groupes).`);
+      const dance = groups.filter((c) => /(dance|baile|salsa|bachata|kizomba)/i.test(c.name || ''));
+      if (dance.length) {
+        console.error('Groupes contenant un mot lie a la danse :');
+        dance.forEach((c) => console.error(`  • "${c.name}"`));
+      } else {
+        console.error('Premiers groupes (20) :');
+        groups.slice(0, 20).forEach((c) => console.error(`  • "${c.name}"`));
+      }
       return shutdown('group-not-found', 3);
     }
+    console.log(`✓ Groupe trouve : "${group.name}"`);
 
     console.log(`📜 Fetch les ${LIMIT} derniers messages...`);
     const messages = await group.fetchMessages({ limit: LIMIT });
