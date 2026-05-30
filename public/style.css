@@ -129,6 +129,51 @@ main {
 /* ── CARD ──────────────────────────────────────────────── */
 .cards-view { display: flex; flex-direction: column; gap: 14px; }
 
+/* Sections par jour (rolling scroll) */
+.day-section { display: flex; flex-direction: column; gap: 14px; scroll-margin-top: 180px; }
+.day-section + .day-section { margin-top: 8px; }
+.day-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 18px 4px 4px;
+  border-top: 1px solid transparent;
+}
+.day-section + .day-section .day-section-header {
+  border-top-color: var(--border);
+  padding-top: 26px;
+}
+.dsh-day {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  text-transform: capitalize;
+}
+.dsh-count {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.day-empty {
+  background: var(--bg-elev);
+  border: 1px dashed var(--border);
+  border-radius: 18px;
+  padding: 22px 24px;
+  text-align: center;
+  color: var(--text-2);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.day-empty .de-hint {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--text-3);
+  font-size: 0.8rem;
+}
+
 .card {
   position: relative;
   border-radius: 24px;
@@ -447,11 +492,81 @@ main {
 }
 .leaflet-container { background: #1a1c25; }
 .leaflet-tile { filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.95) saturate(0.75); }
-.leaflet-control-attribution { filter: invert(1) hue-rotate(180deg); }
+.leaflet-control-attribution { filter: invert(1) hue-rotate(180deg); font-size: 0.65rem; }
 .leaflet-popup-content-wrapper, .leaflet-popup-tip {
   background: var(--surface) !important;
   color: var(--text) !important;
-  border-radius: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+}
+.leaflet-popup-content {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.85rem;
+  margin: 12px 14px !important;
+  min-width: 200px;
+}
+.leaflet-popup-content strong { font-weight: 700; font-size: 0.92rem; display: block; margin-bottom: 6px; }
+.vp-dist {
+  display: inline-block;
+  background: var(--bg-elev);
+  color: var(--accent);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.72rem;
+  margin: 4px 0 6px;
+}
+.vp-evs { color: var(--text-2); font-size: 0.78rem; line-height: 1.5; }
+.vp-row { padding: 2px 0; }
+.vp-link { margin-top: 8px; }
+.vp-link a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 0.78rem; }
+
+/* Venue marker custom */
+.venue-pin .vp-inner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50% 50% 50% 4px;
+  background: linear-gradient(135deg, var(--accent), #ff5a5f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.95rem;
+  border: 2px solid #fff;
+  box-shadow: 0 6px 14px -4px rgba(0,0,0,0.5);
+  transform: rotate(-45deg);
+}
+.venue-pin .vp-inner span { transform: rotate(45deg); }
+
+/* User position pin */
+.user-pin .up-dot {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #3ea3ff;
+  border: 3px solid #fff;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.3);
+}
+.user-pin .up-ring {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(62, 163, 255, 0.25);
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  animation: pulse-ring 2.4s ease-out infinite;
+}
+@keyframes pulse-ring {
+  0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0.7; }
+  100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .user-pin .up-ring { animation: none; }
 }
 
 /* ── TABBAR (3 views) ──────────────────────────────────── */
