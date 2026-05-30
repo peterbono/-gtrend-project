@@ -386,9 +386,19 @@ function fmtDist(m) {
   if (m < 1000) return `${Math.round(m)} m`;
   return `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`;
 }
-function fmtDuration(sec) {
-  if (sec == null) return '';
-  const m = Math.round(sec / 60);
+// OSRM public demo ne supporte que driving — son champ duration ne reflete pas
+// le foot. On calcule nous-meme : distance reelle (OSRM) ou Haversine * detour,
+// divisee par 5 km/h (vitesse marche moyenne).
+function walkingMinutes(distMeters, isStraightLine = false) {
+  if (distMeters == null) return null;
+  const detour = isStraightLine ? 1.3 : 1; // si pas de routing, on majore
+  const adjusted = distMeters * detour;
+  const minutes = adjusted / 1000 / 5 * 60;
+  return Math.max(1, Math.round(minutes));
+}
+function fmtWalk(distMeters, isStraightLine = false) {
+  const m = walkingMinutes(distMeters, isStraightLine);
+  if (m == null) return '';
   if (m < 60) return `${m} min walk`;
   return `${Math.floor(m / 60)}h ${m % 60}m walk`;
 }
@@ -486,7 +496,10 @@ async function renderMap() {
     const count = evsForDay.length;
     const evList = evsForDay.map((ev) => `<div class="vp-row">${escapeHTML((ev.title || v.displayName).slice(0, 70))}</div>`).join('');
     const dist = userPos ? distanceMeters(userPos, { lat: v.lat, lon: v.lon }) : null;
-    const distHTML = dist != null ? `<div class="vp-dist" id="vp-dist-${v.venueKey}">📍 ${fmtDist(dist)} away · calculating walk…</div>` : '';
+    // Premier affichage : Haversine (ligne droite) + estimate avec detour 1.3x.
+    const distHTML = dist != null
+      ? `<div class="vp-dist" id="vp-dist-${v.venueKey}">🚶 ${fmtWalk(dist, true)} · ${fmtDist(dist)}</div>`
+      : '';
     const link = v.mapUrl ? `<div class="vp-link"><a href="${escapeHTML(v.mapUrl)}" target="_blank" rel="noopener">Directions ↗</a></div>` : '';
     const popupHTML = `<strong>${escapeHTML(v.displayName)}</strong>${distHTML}<div class="vp-evs">${evList}</div>${link}`;
     const m = L.marker([v.lat, v.lon], { icon: venueIcon(count) }).addTo(mapInstance).bindPopup(popupHTML);
@@ -495,7 +508,8 @@ async function renderMap() {
       if (userPos) {
         const route = await fetchRoute(userPos, { lat: v.lat, lon: v.lon });
         const el = document.getElementById(`vp-dist-${v.venueKey}`);
-        if (el && route) el.innerHTML = `🚶 ${fmtDuration(route.durationSeconds)} · ${fmtDist(route.distanceMeters)}`;
+        // OSRM nous donne la distance ROUTIERE precise — on l'utilise pour le temps de marche.
+        if (el && route) el.innerHTML = `🚶 ${fmtWalk(route.distanceMeters, false)} · ${fmtDist(route.distanceMeters)}`;
       }
     });
     mapMarkers.push(m);
