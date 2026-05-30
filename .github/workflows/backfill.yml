@@ -62,7 +62,7 @@ jobs:
           PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
           BACKFILL_HOURS: ${{ inputs.hours || '24' }}
           BACKFILL_LIMIT: ${{ inputs.limit || '200' }}
-          READY_TIMEOUT_SECONDS: "120"
+          READY_TIMEOUT_SECONDS: "240"
         run: node src/backfill.js
 
       - name: Save WhatsApp session cache

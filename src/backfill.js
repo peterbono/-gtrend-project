@@ -5,6 +5,7 @@ import pkg from 'whatsapp-web.js';
 import { parseMessage } from './parser.js';
 import { upsertMany, storageMode } from './store.js';
 import { extractFromImage, visionEnabled } from './vision.js';
+import { findGroups, parseGroupNames } from './group-match.js';
 
 const { Client, LocalAuth } = pkg;
 
@@ -50,63 +51,60 @@ client.on('qr', () => {
 
 client.on('ready', async () => {
   clearTimeout(readyTimer);
-  console.log(`🚀 Connecte, recherche du groupe "${GROUP_NAME}"...`);
+  const targets = parseGroupNames(GROUP_NAME);
+  console.log(`🚀 Connecte, recherche de ${targets.length} groupe(s) : ${targets.map((g) => `"${g}"`).join(', ')}`);
   console.log(`   Stockage : ${storageMode} | Vision : ${visionEnabled() ? 'ACTIVEE' : 'desactivee'}`);
 
   try {
     const chats = await client.getChats();
     const groups = chats.filter((c) => c.isGroup);
-    const norm = (s) => (s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
-    const target = norm(GROUP_NAME);
-    let group = groups.find((c) => c.name === GROUP_NAME);
-    if (!group) group = groups.find((c) => norm(c.name) === target);
-    if (!group) group = groups.find((c) => norm(c.name).includes(target));
-    if (!group) {
-      console.error(`Groupe "${GROUP_NAME}" introuvable parmi ${chats.length} chats (${groups.length} groupes).`);
+    const matched = findGroups(chats, GROUP_NAME);
+    if (!matched.length) {
+      console.error(`Aucun groupe trouve parmi ${chats.length} chats (${groups.length} groupes).`);
       const dance = groups.filter((c) => /(dance|baile|salsa|bachata|kizomba)/i.test(c.name || ''));
       if (dance.length) {
         console.error('Groupes contenant un mot lie a la danse :');
         dance.forEach((c) => console.error(`  • "${c.name}"`));
-      } else {
-        console.error('Premiers groupes (20) :');
-        groups.slice(0, 20).forEach((c) => console.error(`  • "${c.name}"`));
       }
       return shutdown('group-not-found', 3);
     }
-    console.log(`✓ Groupe trouve : "${group.name}"`);
-
-    console.log(`📜 Fetch les ${LIMIT} derniers messages...`);
-    const messages = await group.fetchMessages({ limit: LIMIT });
-    const recent = messages.filter((m) => (m.timestamp || 0) * 1000 >= cutoffMs);
-    console.log(`Traitement : ${recent.length} / ${messages.length} messages dans les ${HOURS}h.`);
+    console.log(`✓ ${matched.length} groupe(s) trouve(s) : ${matched.map((g) => `"${g.name}"`).join(', ')}`);
 
     let captured = 0;
     let visionCalls = 0;
-    for (const msg of recent) {
-      try {
-        let events = parseMessage(msg.body || '');
-        let source = 'text';
 
-        if (events.length === 0 && msg.hasMedia && visionEnabled()) {
-          const media = await msg.downloadMedia();
-          if (media && media.mimetype?.startsWith('image/')) {
-            events = await extractFromImage(media.data, media.mimetype);
-            source = 'vision';
-            visionCalls += 1;
+    for (const group of matched) {
+      console.log(`📜 [${group.name}] fetch ${LIMIT} derniers messages...`);
+      const messages = await group.fetchMessages({ limit: LIMIT });
+      const recent = messages.filter((m) => (m.timestamp || 0) * 1000 >= cutoffMs);
+      console.log(`   ${recent.length} / ${messages.length} messages dans les ${HOURS}h.`);
+
+      for (const msg of recent) {
+        try {
+          let events = parseMessage(msg.body || '');
+          let source = 'text';
+
+          if (events.length === 0 && msg.hasMedia && visionEnabled()) {
+            const media = await msg.downloadMedia();
+            if (media && media.mimetype?.startsWith('image/')) {
+              events = await extractFromImage(media.data, media.mimetype);
+              source = 'vision';
+              visionCalls += 1;
+            }
           }
-        }
 
-        if (events.length) {
-          await upsertMany(events, { source });
-          captured += events.length;
-          console.log(`  📥 ${events.length} [${source}] : ${events.map((e) => e.day).join(', ')}`);
+          if (events.length) {
+            await upsertMany(events, { source });
+            captured += events.length;
+            console.log(`  📥 ${events.length} [${source}] : ${events.map((e) => e.day).join(', ')}`);
+          }
+        } catch (err) {
+          console.warn(`  ⚠️  ${err.message}`);
         }
-      } catch (err) {
-        console.warn(`  ⚠️  ${err.message}`);
       }
     }
 
-    console.log(`✅ Backfill termine : ${captured} evenement(s) upsert, ${visionCalls} appels vision.`);
+    console.log(`✅ Backfill termine : ${captured} evenement(s) upsert sur ${matched.length} groupe(s), ${visionCalls} appels vision.`);
     shutdown('done', 0);
   } catch (err) {
     console.error('[backfill] erreur :', err.message);
