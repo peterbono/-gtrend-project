@@ -53,14 +53,48 @@ function better(a, b) {
   return score(b) > score(a) ? b : a;
 }
 
+// Normalise une heure pour comparaison : "9pm" -> "9p", "9:00pm" -> "9p", "9 p.m" -> "9p"
+function normTime(t) {
+  return (t || '')
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/:00\b/g, '')
+    .replace(/p\.?m\.?/g, 'p')
+    .replace(/a\.?m\.?/g, 'a');
+}
+function isSocialAct(a) {
+  return /\b(social|baile|party)\b/i.test(a?.name || '');
+}
+// Heure de debut (en nombre brut, sans ampm normalise — suffit pour matcher "9pm" et "9p-1a").
+function timeStart(t) {
+  const m = (t || '').toLowerCase().match(/^(\d{1,2})/);
+  return m ? Number(m[1]) : null;
+}
+
 function mergeActivities(a = [], b = []) {
-  const seen = new Set();
+  const all = [...(a || []), ...(b || [])];
   const out = [];
-  for (const list of [a, b]) {
-    for (const act of list || []) {
-      const k = `${(act.time || '').toLowerCase()}|${(act.name || '').toLowerCase()}`;
-      if (seen.has(k)) continue;
-      seen.add(k);
+  const seenSocialStarts = new Map(); // start -> index dans out
+  const seenWorkshops = new Set();    // cle exacte time|name
+
+  for (const act of all) {
+    if (isSocialAct(act)) {
+      const start = timeStart(act.time);
+      if (start != null && seenSocialStarts.has(start)) {
+        const idx = seenSocialStarts.get(start);
+        const prev = out[idx];
+        // Garde le plus informatif : plage horaire plus large, nom plus complet.
+        const time = (act.time || '').length > (prev.time || '').length ? act.time : prev.time;
+        const name = (act.name || '').length > (prev.name || '').length ? act.name : prev.name;
+        out[idx] = { time, name };
+        continue;
+      }
+      out.push(act);
+      if (start != null) seenSocialStarts.set(start, out.length - 1);
+    } else {
+      const k = `${normTime(act.time)}|${(act.name || '').toLowerCase().trim().replace(/\s+/g, ' ')}`;
+      if (seenWorkshops.has(k)) continue;
+      seenWorkshops.add(k);
       out.push(act);
     }
   }
