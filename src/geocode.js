@@ -77,9 +77,16 @@ async function coordsFromMapUrl(url) {
   return null;
 }
 
-// Overrides manuels prioritaires (utile si Gemini est imprecis sur un lieu).
-// Laisser vide par defaut : Gemini est plus fiable.
-const KNOWN = {};
+// Overrides manuels : venues recherchees a la main (adresses confirmees) pour les
+// lieux frequents de la scene danse de Playa del Carmen, evite tout appel LLM.
+const KNOWN = {
+  // The Warehouse PDC : Av 20 entre Calle 4 et 6 Norte, Centro
+  'warehouse': { lat: 20.6296, lon: -87.0758 },
+  // MEXCALLI : Quinta Avenida entre Calle 4 et 6 (5ta Av zone)
+  'mexcalli': { lat: 20.6286, lon: -87.0719 },
+  // STEP DANCE : Av 45 Sur y Calle 1 Bis Sur (zone sud)
+  'step dance': { lat: 20.6240, lon: -87.0834 },
+};
 function lookupKnown(name) {
   const k = name.toLowerCase().split(',')[0].replace(/^\s*(the|la|el|le)\s+/, '').trim();
   return KNOWN[k] || null;
@@ -88,95 +95,49 @@ function lookupKnown(name) {
 // Fallback Gemini : on demande au LLM les coords GPS du lieu, avec sanity check
 // qu'il tombe dans la zone Playa del Carmen. Gemini 2.5 connait les venues populaires
 // de Playa beaucoup mieux que Nominatim/OSM (qui rate les petits clubs).
-async function geocodeViaGemini(venueName) {
-  if (!process.env.GEMINI_API_KEY) {
-    console.warn('[geocode/gemini] no GEMINI_API_KEY');
-    return null;
-  }
-  const model = process.env.VISION_MODEL || 'gemini-2.5-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
-  const prompt = `Donne-moi les coordonnees GPS precises du lieu nomme "${venueName}" a Playa del Carmen, Quintana Roo, Mexique. Cherche un club de danse, bar, restaurant ou rooftop a Playa. Reponds UNIQUEMENT en JSON: {"lat":NUMBER,"lon":NUMBER,"address":"..."}. Si tu ne connais pas du tout: {"lat":null,"lon":null}.`;
-  try {
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { response_mime_type: 'application/json', temperature: 0, max_output_tokens: 300 },
-      }),
-    });
-    if (!r.ok) {
-      console.warn('[geocode/gemini]', venueName, 'HTTP', r.status, (await r.text()).slice(0, 200));
-      return null;
-    }
-    const data = await r.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    let parsed;
-    try { parsed = JSON.parse(text); } catch { console.warn('[geocode/gemini]', venueName, 'unparseable:', text.slice(0, 120)); return null; }
-    if (parsed.lat == null || parsed.lon == null) {
-      console.log('[geocode/gemini]', venueName, 'unknown');
-      return null;
-    }
-    if (parsed.lat < 20.55 || parsed.lat > 20.72 || parsed.lon < -87.15 || parsed.lon > -86.98) {
-      console.warn('[geocode/gemini]', venueName, 'out of bounds:', parsed);
-      return null;
-    }
-    console.log('[geocode/gemini]', venueName, '→', parsed.lat, parsed.lon);
-    return {
-      lat: parsed.lat,
-      lon: parsed.lon,
-      address: parsed.address || null,
-      source: 'gemini',
-      found: true,
-    };
-  } catch (e) {
-    console.warn('[geocode/gemini]', venueName, 'error:', e.message);
-    return null;
-  }
+async function geocodeViaLLM(venueName) {
+  const { llmJSON } = await import('./llm.js');
+  const prompt = `Tu es un expert local de Playa del Carmen (Quintana Roo, Mexique). Donne-moi les coordonnees GPS precises du lieu nomme "${venueName}" (club de danse, bar, restaurant, rooftop ou salle de cours). Reponds UNIQUEMENT en JSON: {"lat":NUMBER,"lon":NUMBER,"address":"..."}. Si tu ne connais pas: {"lat":null,"lon":null}.`;
+  const result = await llmJSON(prompt, { maxTokens: 300 });
+  if (!result?.data) return null;
+  const parsed = result.data;
+  if (parsed.lat == null || parsed.lon == null) return null;
+  if (parsed.lat < 20.55 || parsed.lat > 20.72 || parsed.lon < -87.15 || parsed.lon > -86.98) return null;
+  return {
+    lat: parsed.lat,
+    lon: parsed.lon,
+    address: parsed.address || null,
+    source: result.source,
+    found: true,
+  };
 }
 
-// Batch : demande a Gemini d'un coup les coords de plusieurs venues. Beaucoup plus
-// economique en quota que 1 appel par venue (free tier ~10 RPM).
-export async function geocodeManyViaGemini(names) {
-  if (!process.env.GEMINI_API_KEY || !names.length) return new Map();
-  const model = process.env.VISION_MODEL || 'gemini-2.5-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
-  const prompt = `Donne-moi les coordonnees GPS precises de ces lieux a Playa del Carmen, Quintana Roo, Mexique (clubs de danse, bars, restaurants, rooftops, salles de cours) :
+// Batch : demande d'un coup les coords de plusieurs venues via LLM (Gemini puis Groq).
+// Beaucoup plus economique en quota qu'1 appel par venue.
+export async function geocodeManyViaLLM(names) {
+  if (!names.length) return new Map();
+  const { llmJSON } = await import('./llm.js');
+  const prompt = `Tu es un expert local de Playa del Carmen (Quintana Roo, Mexique). Donne-moi les coordonnees GPS precises de ces lieux (clubs de danse, bars, restaurants, rooftops, salles de cours) :
 ${names.map((n, i) => `${i + 1}. "${n}"`).join('\n')}
 
-Reponds UNIQUEMENT en JSON, un tableau dans le MEME ordre :
-[{"name":"...","lat":NUMBER,"lon":NUMBER,"address":"..."}, ...]
-Pour un lieu inconnu : {"name":"...","lat":null,"lon":null}.`;
-
-  try {
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { response_mime_type: 'application/json', temperature: 0, max_output_tokens: 2000 },
-      }),
-    });
-    if (!r.ok) {
-      console.warn('[geocode/gemini-batch] HTTP', r.status, (await r.text()).slice(0, 200));
-      return new Map();
-    }
-    const data = await r.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
-    const parsed = JSON.parse(text);
-    const out = new Map();
-    for (let i = 0; i < parsed.length && i < names.length; i++) {
-      const item = parsed[i];
-      if (item?.lat == null || item?.lon == null) continue;
-      if (item.lat < 20.55 || item.lat > 20.72 || item.lon < -87.15 || item.lon > -86.98) continue;
-      out.set(names[i], { lat: item.lat, lon: item.lon, address: item.address || null, source: 'gemini', found: true });
-    }
-    return out;
-  } catch (e) {
-    console.warn('[geocode/gemini-batch] error:', e.message);
-    return new Map();
+Reponds UNIQUEMENT en JSON. Format :
+{"venues":[{"name":"...","lat":NUMBER,"lon":NUMBER,"address":"..."},...]}
+Le tableau doit avoir EXACTEMENT ${names.length} entrees, dans le MEME ordre. Pour un lieu vraiment inconnu : "lat":null,"lon":null.`;
+  const result = await llmJSON(prompt, { maxTokens: 2000 });
+  if (!result?.data) return new Map();
+  const arr = Array.isArray(result.data) ? result.data : result.data.venues || [];
+  const out = new Map();
+  for (let i = 0; i < arr.length && i < names.length; i++) {
+    const item = arr[i];
+    if (item?.lat == null || item?.lon == null) continue;
+    if (item.lat < 20.55 || item.lat > 20.72 || item.lon < -87.15 || item.lon > -86.98) continue;
+    out.set(names[i], { lat: item.lat, lon: item.lon, address: item.address || null, source: result.source, found: true });
   }
+  return out;
 }
+
+// Compat : ancien nom
+export const geocodeManyViaGemini = geocodeManyViaLLM;
 
 export async function geocodeVenue(name, mapUrl = null) {
   if (!name || typeof name !== 'string') return null;
@@ -219,11 +180,11 @@ export async function geocodeVenue(name, mapUrl = null) {
     await new Promise((r) => setTimeout(r, 1100));
   }
 
-  // 4) Dernier recours : Gemini (connait les venues populaires de Playa).
-  const gem = await geocodeViaGemini(name);
-  if (gem) {
-    await setCache(key, gem, CACHE_TTL_HIT);
-    return gem;
+  // 4) Dernier recours : LLM (Gemini, fallback Groq).
+  const llm = await geocodeViaLLM(name);
+  if (llm) {
+    await setCache(key, llm, CACHE_TTL_HIT);
+    return llm;
   }
 
   await setCache(key, { found: false }, CACHE_TTL_MISS);
