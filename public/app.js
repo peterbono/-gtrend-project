@@ -135,20 +135,25 @@ function decomposeWorkshop(name) {
   return { who, style, levels, subStyle };
 }
 
-// Construit la ligne (left, meta) selon ce qu'on a comme info pour un niveau donne.
+// Construit la ligne (left, meta) :
+//   - prof identifie         → left = nom du prof, meta = "Style · SubStyle · Level"
+//   - style + sous-style     → left = "Style · SubStyle", meta = level (si dispo)
+//   - style sans sous-style  → left = "Style class", meta = level
+//   - juste un niveau        → left = "Level class", meta = ''
+//   - rien d'utile           → left = nom brut
 function makeWorkshopRow({ who, style, subStyle }, level, fallbackName) {
   let left, meta;
   if (who) {
     left = who;
     meta = [style, subStyle, level].filter(Boolean).join(' · ');
+  } else if (style) {
+    left = subStyle ? `${style} · ${subStyle}` : `${style} class`;
+    meta = level || '';
   } else if (level) {
     left = `${level} class`;
-    meta = [style, subStyle].filter(Boolean).join(' · ');
+    meta = '';
   } else if (subStyle) {
     left = subStyle;
-    meta = style;
-  } else if (style) {
-    left = `${style} class`;
     meta = '';
   } else {
     left = fallbackName;
@@ -236,17 +241,15 @@ function renderCard(ev) {
   const socials = acts.filter(isSocial);
   const social = socials[0];
 
-  // Eclate une activite multi-niveaux (ex "Clases de salsa (Principiante e Intermedio)")
-  // en plusieurs lignes : une par niveau detecte.
-  const workshopRows = [];
-  for (const a of workshops) {
+  // Une ligne par activite. Si plusieurs niveaux sont detectes (ex "Beginner & Intermediate"),
+  // on les combine en une seule etiquette : c'est UNE classe couvrant les 2 niveaux,
+  // pas 2 classes paralleles.
+  const workshopRows = workshops.map((a) => {
     const d = decomposeWorkshop(a.name);
-    const levelsToShow = d.levels.length ? d.levels : [''];
-    for (const lvl of levelsToShow) {
-      const { left, meta } = makeWorkshopRow(d, lvl, a.name);
-      workshopRows.push({ time: a.time, left, meta });
-    }
-  }
+    const levelLabel = d.levels.length ? d.levels.join(' & ') : '';
+    const { left, meta } = makeWorkshopRow(d, levelLabel, a.name);
+    return { time: a.time, left, meta };
+  });
 
   const workshopsHTML = workshopRows.length
     ? `<div>
