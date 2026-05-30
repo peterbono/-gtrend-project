@@ -1,0 +1,73 @@
+# Backfill : fetch les N dernieres heures de messages du groupe et upsert.
+# Utile au demarrage (peupler la web app) ou apres une coupure du cron.
+
+name: Backfill WhatsApp history
+
+on:
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: "Heures d'historique a fetch"
+        required: false
+        default: "24"
+      limit:
+        description: "Nombre max de messages a parcourir"
+        required: false
+        default: "200"
+
+concurrency:
+  group: whatsapp-listener
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci --omit=dev
+
+      - name: Restore WhatsApp session cache
+        id: restore-session
+        uses: actions/cache/restore@v4
+        with:
+          path: .wwebjs_auth
+          key: wwebjs-auth-${{ github.run_id }}
+          restore-keys: |
+            wwebjs-auth-
+
+      - name: Fail fast if no session
+        if: steps.restore-session.outputs.cache-matched-key == ''
+        run: |
+          echo "::error::Aucune session .wwebjs_auth dans le cache. Lance le workflow seed-session d'abord."
+          exit 1
+
+      - name: Run backfill
+        env:
+          GROUP_NAME: ${{ vars.GROUP_NAME || 'PDC Dance Socials' }}
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          VISION_MODEL: ${{ vars.VISION_MODEL || 'gemini-2.5-flash' }}
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
+          BACKFILL_HOURS: ${{ inputs.hours || '24' }}
+          BACKFILL_LIMIT: ${{ inputs.limit || '200' }}
+          READY_TIMEOUT_SECONDS: "120"
+        run: node src/backfill.js
+
+      - name: Save WhatsApp session cache
+        if: always() && hashFiles('.wwebjs_auth/**') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .wwebjs_auth
+          key: wwebjs-auth-${{ github.run_id }}
