@@ -246,7 +246,9 @@ function renderCard(ev) {
   // pas 2 classes paralleles.
   const workshopRows = workshops.map((a) => {
     const d = decomposeWorkshop(a.name);
-    const levelLabel = d.levels.length ? d.levels.join(' & ') : '';
+    // Abrege les niveaux en multi : "Beginner & Intermediate" -> "Beg / Int"
+    const lvls = d.levels.map((l) => l.replace(/^Beginner$/, 'Beg').replace(/^Intermediate$/, 'Int').replace(/^Advanced$/, 'Adv'));
+    const levelLabel = lvls.length === 1 ? d.levels[0] : lvls.join(' / ');
     const { left, meta } = makeWorkshopRow(d, levelLabel, a.name);
     return { time: a.time, left, meta };
   });
