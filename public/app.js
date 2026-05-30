@@ -12,7 +12,17 @@ const STYLE_LABEL = { salsa: 'Salsa', bachata: 'Bachata', kizomba: 'Kizomba', zo
 
 const STYLE_RE = /\b(salsa|bachata|kizomba|zouk|merengue|tango|cha[\s-]?cha)\b/i;
 const LEVEL_RE = /\b(beginner|intermediate|advanced|principiantes?|intermedios?|avanzados?|beg|int|adv|all\s*levels?)\b/i;
+const LEVEL_RE_G = /\b(beginner|intermediate|advanced|principiantes?|intermedios?|avanzados?|beg|int|adv|all\s*levels?)\b/gi;
 const SOCIAL_RE = /\b(social|baile|party)\b/i;
+
+function normalizeLevel(raw) {
+  const l = (raw || '').toLowerCase();
+  if (/principiante|beginner|^beg$/.test(l)) return 'Beginner';
+  if (/intermedio|intermediate|^int$/.test(l)) return 'Intermediate';
+  if (/avanzado|advanced|^adv$/.test(l)) return 'Advanced';
+  if (/all\s*levels/.test(l)) return 'All levels';
+  return raw;
+}
 // Sous-styles de danse : qualifient le style principal, vont a droite dans la meta
 // (pas a gauche en tant que prof).
 const SUBSTYLE_RE = /\b(tradicional|dominicana|moderna|sensual|urbana|figuras\s+sensuales|cubana|on\s*[12]|lineal|casino|rueda|tarraxa|ghetto\s+zouk|fusion)\b/i;
@@ -96,19 +106,13 @@ const FILLER_RE = /\b(clase\s*de|class\s*of|cours\s*de|lesson|workshop|taller|de
 
 function decomposeWorkshop(name) {
   const styleMatch = (name || '').match(STYLE_RE);
-  const levelMatch = (name || '').match(LEVEL_RE);
   const style = styleMatch ? STYLE_LABEL[styleMatch[1].toLowerCase().replace(/[\s-]/g, '')] || styleMatch[1] : '';
-  let level = levelMatch ? levelMatch[1] : '';
-  level = level
-    .replace(/principiantes?/i, 'Beginner')
-    .replace(/intermedios?/i, 'Intermediate')
-    .replace(/avanzados?/i, 'Advanced')
-    .replace(/\bbeg\b/i, 'Beg')
-    .replace(/\bint\b/i, 'Int')
-    .replace(/\badv\b/i, 'Adv')
-    .replace(/^(.)(.*)$/, (_, a, b) => a.toUpperCase() + b.toLowerCase());
 
-  // Sous-style (ex Bachata Tradicional / Sensual / Figuras Sensuales) — va a droite.
+  // Tous les niveaux mentionnes (ex "Principiante e Intermedio" -> 2 niveaux).
+  const levels = [...(name || '').matchAll(LEVEL_RE_G)]
+    .map((m) => normalizeLevel(m[1]))
+    .filter((l, i, arr) => arr.indexOf(l) === i); // dedup
+
   const subStyleMatch = (name || '').match(SUBSTYLE_RE);
   const subStyle = subStyleMatch
     ? subStyleMatch[1].toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
@@ -116,9 +120,11 @@ function decomposeWorkshop(name) {
 
   let who = (name || '')
     .replace(STYLE_RE, '')
-    .replace(LEVEL_RE, '')
+    .replace(LEVEL_RE_G, '')
     .replace(SUBSTYLE_RE, '')
     .replace(FILLER_RE, '')
+    .replace(/[()[\]]/g, '')         // strip parens
+    .replace(/\s+[ye]\s+/gi, ' ')    // strip conjunctions orphelines "e" / "y"
     .replace(/\s+/g, ' ')
     .trim();
   who = who.replace(/&/g, '·').replace(/^[·,;:\-–\s]+|[·,;:\-–\s]+$/g, '').trim();
@@ -126,7 +132,29 @@ function decomposeWorkshop(name) {
   if (who && who === who.toUpperCase()) {
     who = who.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
   }
-  return { who, style, level, subStyle };
+  return { who, style, levels, subStyle };
+}
+
+// Construit la ligne (left, meta) selon ce qu'on a comme info pour un niveau donne.
+function makeWorkshopRow({ who, style, subStyle }, level, fallbackName) {
+  let left, meta;
+  if (who) {
+    left = who;
+    meta = [style, subStyle, level].filter(Boolean).join(' · ');
+  } else if (level) {
+    left = `${level} class`;
+    meta = [style, subStyle].filter(Boolean).join(' · ');
+  } else if (subStyle) {
+    left = subStyle;
+    meta = style;
+  } else if (style) {
+    left = `${style} class`;
+    meta = '';
+  } else {
+    left = fallbackName;
+    meta = '';
+  }
+  return { left, meta };
 }
 
 function fmtTime(t) {
@@ -208,21 +236,30 @@ function renderCard(ev) {
   const socials = acts.filter(isSocial);
   const social = socials[0];
 
-  const workshopsHTML = workshops.length
+  // Eclate une activite multi-niveaux (ex "Clases de salsa (Principiante e Intermedio)")
+  // en plusieurs lignes : une par niveau detecte.
+  const workshopRows = [];
+  for (const a of workshops) {
+    const d = decomposeWorkshop(a.name);
+    const levelsToShow = d.levels.length ? d.levels : [''];
+    for (const lvl of levelsToShow) {
+      const { left, meta } = makeWorkshopRow(d, lvl, a.name);
+      workshopRows.push({ time: a.time, left, meta });
+    }
+  }
+
+  const workshopsHTML = workshopRows.length
     ? `<div>
         <div class="sched-label">Classes</div>
-        <ul class="sched-list">${workshops.map((a) => {
-          const { who, style, level, subStyle } = decomposeWorkshop(a.name);
-          const meta = [style, subStyle, level].filter(Boolean).join(' · ');
-          // Si pas de "who" identifie : on affiche un tiret discret a gauche
-          // et la meta complete a droite (style et sous-style suffisent).
-          const left = who || (style || subStyle ? '—' : a.name);
-          return `<li>
-            <span class="t">${escapeHTML(fmtTime(a.time))}</span>
-            <span class="n" dir="auto">${escapeHTML(left)}</span>
-            <span class="meta">${escapeHTML(meta)}</span>
-          </li>`;
-        }).join('')}</ul>
+        <ul class="sched-list">${workshopRows
+          .map(
+            (r) => `<li>
+            <span class="t">${escapeHTML(fmtTime(r.time))}</span>
+            <span class="n" dir="auto">${escapeHTML(r.left)}</span>
+            <span class="meta">${escapeHTML(r.meta)}</span>
+          </li>`
+          )
+          .join('')}</ul>
       </div>`
     : '';
 

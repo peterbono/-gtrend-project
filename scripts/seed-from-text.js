@@ -54,6 +54,18 @@ Dress code: Elegant Tango Vibes.
 18:30 - Milonga
 📍 Hyatt Centric Playa del Carmen – Alessya Rooftop, Calle Corazón
 https://maps.app.goo.gl/e3gmffqsz3UrS7gY6`,
+
+  // DOMINGO — Latin Breeze Sunday @ MEXCALLI
+  `DOMINGO - Latin Breeze Sunday
+
+La fiesta latina más grande de la Riviera Maya llega a MEXCALLI
+Salsa, Bachata, Social Dance Internacional.
+Ambiente elegante, buena vibra.
+
+19:00 Clase de Salsa (Beginner & Intermediate)
+20:00 Clase de Bachata (Beginner & Intermediate)
+21:00 Social Dance
+📍 Mexcalli, 5th Ave btw 4th & 6th St, Playa del Carmen`,
 ];
 
 console.log(`[seed] parsing ${MESSAGES.length} messages...`);
