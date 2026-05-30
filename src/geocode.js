@@ -77,17 +77,105 @@ async function coordsFromMapUrl(url) {
   return null;
 }
 
-// Quelques venues connues de Playa, override prioritaire (coords approximatives).
-const KNOWN = {
-  'warehouse': { lat: 20.6308, lon: -87.0721 },         // Av. 20 entre Calles 4 y 6
-  'mexcalli': { lat: 20.6243, lon: -87.0698 },          // 5ta avenida zone
-  'step dance': { lat: 20.6276, lon: -87.0712 },
-  'lush latin dance party': { lat: 20.6308, lon: -87.0721 },
-  'hyatt centric playa del carmen': { lat: 20.6274, lon: -87.0688 },
-};
+// Overrides manuels prioritaires (utile si Gemini est imprecis sur un lieu).
+// Laisser vide par defaut : Gemini est plus fiable.
+const KNOWN = {};
 function lookupKnown(name) {
   const k = name.toLowerCase().split(',')[0].replace(/^\s*(the|la|el|le)\s+/, '').trim();
   return KNOWN[k] || null;
+}
+
+// Fallback Gemini : on demande au LLM les coords GPS du lieu, avec sanity check
+// qu'il tombe dans la zone Playa del Carmen. Gemini 2.5 connait les venues populaires
+// de Playa beaucoup mieux que Nominatim/OSM (qui rate les petits clubs).
+async function geocodeViaGemini(venueName) {
+  if (!process.env.GEMINI_API_KEY) {
+    console.warn('[geocode/gemini] no GEMINI_API_KEY');
+    return null;
+  }
+  const model = process.env.VISION_MODEL || 'gemini-2.5-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
+  const prompt = `Donne-moi les coordonnees GPS precises du lieu nomme "${venueName}" a Playa del Carmen, Quintana Roo, Mexique. Cherche un club de danse, bar, restaurant ou rooftop a Playa. Reponds UNIQUEMENT en JSON: {"lat":NUMBER,"lon":NUMBER,"address":"..."}. Si tu ne connais pas du tout: {"lat":null,"lon":null}.`;
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { response_mime_type: 'application/json', temperature: 0, max_output_tokens: 300 },
+      }),
+    });
+    if (!r.ok) {
+      console.warn('[geocode/gemini]', venueName, 'HTTP', r.status, (await r.text()).slice(0, 200));
+      return null;
+    }
+    const data = await r.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    let parsed;
+    try { parsed = JSON.parse(text); } catch { console.warn('[geocode/gemini]', venueName, 'unparseable:', text.slice(0, 120)); return null; }
+    if (parsed.lat == null || parsed.lon == null) {
+      console.log('[geocode/gemini]', venueName, 'unknown');
+      return null;
+    }
+    if (parsed.lat < 20.55 || parsed.lat > 20.72 || parsed.lon < -87.15 || parsed.lon > -86.98) {
+      console.warn('[geocode/gemini]', venueName, 'out of bounds:', parsed);
+      return null;
+    }
+    console.log('[geocode/gemini]', venueName, '→', parsed.lat, parsed.lon);
+    return {
+      lat: parsed.lat,
+      lon: parsed.lon,
+      address: parsed.address || null,
+      source: 'gemini',
+      found: true,
+    };
+  } catch (e) {
+    console.warn('[geocode/gemini]', venueName, 'error:', e.message);
+    return null;
+  }
+}
+
+// Batch : demande a Gemini d'un coup les coords de plusieurs venues. Beaucoup plus
+// economique en quota que 1 appel par venue (free tier ~10 RPM).
+export async function geocodeManyViaGemini(names) {
+  if (!process.env.GEMINI_API_KEY || !names.length) return new Map();
+  const model = process.env.VISION_MODEL || 'gemini-2.5-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
+  const prompt = `Donne-moi les coordonnees GPS precises de ces lieux a Playa del Carmen, Quintana Roo, Mexique (clubs de danse, bars, restaurants, rooftops, salles de cours) :
+${names.map((n, i) => `${i + 1}. "${n}"`).join('\n')}
+
+Reponds UNIQUEMENT en JSON, un tableau dans le MEME ordre :
+[{"name":"...","lat":NUMBER,"lon":NUMBER,"address":"..."}, ...]
+Pour un lieu inconnu : {"name":"...","lat":null,"lon":null}.`;
+
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { response_mime_type: 'application/json', temperature: 0, max_output_tokens: 2000 },
+      }),
+    });
+    if (!r.ok) {
+      console.warn('[geocode/gemini-batch] HTTP', r.status, (await r.text()).slice(0, 200));
+      return new Map();
+    }
+    const data = await r.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+    const parsed = JSON.parse(text);
+    const out = new Map();
+    for (let i = 0; i < parsed.length && i < names.length; i++) {
+      const item = parsed[i];
+      if (item?.lat == null || item?.lon == null) continue;
+      if (item.lat < 20.55 || item.lat > 20.72 || item.lon < -87.15 || item.lon > -86.98) continue;
+      out.set(names[i], { lat: item.lat, lon: item.lon, address: item.address || null, source: 'gemini', found: true });
+    }
+    return out;
+  } catch (e) {
+    console.warn('[geocode/gemini-batch] error:', e.message);
+    return new Map();
+  }
 }
 
 export async function geocodeVenue(name, mapUrl = null) {
@@ -129,6 +217,13 @@ export async function geocodeVenue(name, mapUrl = null) {
       return coords;
     }
     await new Promise((r) => setTimeout(r, 1100));
+  }
+
+  // 4) Dernier recours : Gemini (connait les venues populaires de Playa).
+  const gem = await geocodeViaGemini(name);
+  if (gem) {
+    await setCache(key, gem, CACHE_TTL_HIT);
+    return gem;
   }
 
   await setCache(key, { found: false }, CACHE_TTL_MISS);

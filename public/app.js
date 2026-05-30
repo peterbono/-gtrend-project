@@ -1,12 +1,12 @@
-// Playa Dance — refonte dark UI : multi-tags, schedule grid, social sub-card,
-// 7-cell day strip, calendar mois classique, map stub Leaflet.
+// Playa Dance — dark UI in English: multi-tags, schedule grid, social sub-card,
+// 7-cell day strip, rolling scroll across days, classic month calendar, map with
+// geocoded venues, user location and OSRM walking time.
 
-const DAYS_SHORT = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-const DAYS_FULL = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-const MONTHS_FR = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
-const MONTHS_FULL = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAYS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-// Hue par style — gradient computed par event en blendant les hues detectees.
 const STYLE_HUE = { salsa: 35, bachata: 340, kizomba: 280, zouk: 175, merengue: 50, tango: 20 };
 const STYLE_LABEL = { salsa: 'Salsa', bachata: 'Bachata', kizomba: 'Kizomba', zouk: 'Zouk', merengue: 'Merengue', tango: 'Tango' };
 
@@ -23,6 +23,16 @@ let cachedEtag = null;
 let calCursor = new Date(today.getFullYear(), today.getMonth(), 1);
 let mapInstance = null;
 let mapMarkers = [];
+let mapRouteLayer = null;
+let userMarker = null;
+let userMarkerCircle = null;
+let userPos = null;
+let venuesCache = null;
+
+try {
+  const last = localStorage.getItem('lastGeo');
+  if (last) userPos = JSON.parse(last);
+} catch { /* ignore */ }
 
 const $caption = document.getElementById('today-caption');
 const $strip = document.getElementById('day-strip');
@@ -34,9 +44,8 @@ const $mapView = document.getElementById('map-view');
 const $mapCount = document.getElementById('map-count');
 const $tabbar = document.querySelector('.tabbar');
 
-$caption.textContent = `${DAYS_FULL[todayDayIndex]} ${today.getDate()} ${MONTHS_FR[today.getMonth()]}`;
+$caption.textContent = `Today · ${DAYS_FULL[todayDayIndex]} ${MONTHS_FULL[today.getMonth()]} ${today.getDate()}`;
 
-// ── Helpers ────────────────────────────────────────────────
 function escapeHTML(s) {
   return String(s ?? '')
     .replaceAll('&', '&amp;')
@@ -45,9 +54,7 @@ function escapeHTML(s) {
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 }
-
 function dateOfWeekday(dayIndex) {
-  // Date de la prochaine occurrence (ou aujourd'hui si == today).
   const diff = (dayIndex - todayDayIndex + 7) % 7;
   const d = new Date(today);
   d.setDate(d.getDate() + diff);
@@ -67,50 +74,41 @@ function detectStyles(activities) {
 }
 
 function styleGradient(styles) {
-  if (!styles.length) {
-    return 'linear-gradient(135deg, hsl(220 22% 28%), hsl(220 22% 14%))';
-  }
+  if (!styles.length) return 'linear-gradient(135deg, hsl(220 22% 28%), hsl(220 22% 14%))';
   if (styles.length === 1) {
     const h = STYLE_HUE[styles[0]];
     return `linear-gradient(135deg, hsl(${h} 78% 55%) 0%, hsl(${h} 75% 38%) 55%, hsl(${h} 50% 18%) 100%)`;
   }
-  // 2+ : on prend les 2 premiers et on blend
   const [s1, s2] = styles;
   const h1 = STYLE_HUE[s1], h2 = STYLE_HUE[s2];
-  // Couleur intermediaire = moyenne perceptuelle (HSL angle, chemin le plus court)
   const diff = ((h2 - h1 + 540) % 360) - 180;
   const hMid = (h1 + diff / 2 + 360) % 360;
   return `linear-gradient(135deg, hsl(${h1} 78% 55%) 0%, hsl(${hMid} 70% 45%) 50%, hsl(${h2} 70% 35%) 100%)`;
 }
 
-function isSocial(a) {
-  return SOCIAL_RE.test(a?.name || '');
-}
+function isSocial(a) { return SOCIAL_RE.test(a?.name || ''); }
 
 function decomposeWorkshop(name) {
   const styleMatch = (name || '').match(STYLE_RE);
   const levelMatch = (name || '').match(LEVEL_RE);
   const style = styleMatch ? STYLE_LABEL[styleMatch[1].toLowerCase().replace(/[\s-]/g, '')] || styleMatch[1] : '';
   let level = levelMatch ? levelMatch[1] : '';
-  level = level.replace(/principiantes?/i, 'Débutant')
-               .replace(/intermedios?/i, 'Intermédiaire')
-               .replace(/avanzados?/i, 'Avancé')
-               .replace(/beginner/i, 'Débutant')
-               .replace(/intermediate/i, 'Intermédiaire')
-               .replace(/advanced/i, 'Avancé')
-               .replace(/beg\b/i, 'Déb')
-               .replace(/int\b/i, 'Int')
-               .replace(/adv\b/i, 'Adv');
+  level = level
+    .replace(/principiantes?/i, 'Beginner')
+    .replace(/intermedios?/i, 'Intermediate')
+    .replace(/avanzados?/i, 'Advanced')
+    .replace(/\bbeg\b/i, 'Beg')
+    .replace(/\bint\b/i, 'Int')
+    .replace(/\badv\b/i, 'Adv')
+    .replace(/^(.)(.*)$/, (_, a, b) => a.toUpperCase() + b.toLowerCase());
   let who = (name || '').replace(STYLE_RE, '').replace(LEVEL_RE, '').replace(/\s+/g, ' ').trim();
   who = who.replace(/&/g, '·').replace(/[·,]\s*$/, '').trim();
-  // Normalise casse : "MARCO" -> "Marco", "JAVI" -> "Javi" si tout caps
   if (who && who === who.toUpperCase()) {
     who = who.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
   }
   return { who, style, level };
 }
 
-// "7p" -> "19:00", "9p-1a" -> "21:00 — 01:00", "21:00" -> "21:00"
 function fmtTime(t) {
   if (!t) return '';
   const parts = t.split(/-/);
@@ -127,7 +125,6 @@ function fmtTime(t) {
   return parts.map(fmtOne).join(' — ');
 }
 
-// Pour tri : "7p" -> 1900, "9p-1a" -> 2100
 function timeKey(t) {
   const m = (t || '').toLowerCase().match(/^(\d{1,2})(?::(\d{2}))?\s*([ap])?/);
   if (!m) return 9999;
@@ -144,16 +141,20 @@ function cleanVenueShort(v) {
     .replace(/^(the|la|el|le)\s+/i, '')
     .split(/[,;]/)[0]
     .trim()
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .replace(/Avenida/i, 'Avenida');
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function titleFor(ev) {
   const t = (ev.title || '').trim();
-  return t || cleanVenueShort(ev.venue) || `Soirée ${DAYS_FULL[ev.dayIndex]}`;
+  return t || cleanVenueShort(ev.venue) || `${DAYS_FULL[ev.dayIndex]} night`;
 }
 
-// ── 7-cell day strip ──────────────────────────────────────
+function firstActivityTimeKey(ev) {
+  const times = (ev.activities || []).map((x) => timeKey(x.time));
+  return times.length ? Math.min(...times) : 9999;
+}
+
+// ── Day strip ─────────────────────────────────────────────
 function renderDayStrip() {
   $strip.innerHTML = DAYS_SHORT.map((label, i) => {
     const active = i === selectedDay;
@@ -166,13 +167,13 @@ function renderDayStrip() {
   }).join('');
 }
 
-// ── Card render ───────────────────────────────────────────
+// ── Card ──────────────────────────────────────────────────
 function renderCard(ev) {
   const styles = detectStyles(ev.activities);
   const gradient = styleGradient(styles);
   const tags = styles.length
     ? styles.slice(0, 3).map((s) => `<span class="tag"><span class="dot"></span>${escapeHTML(STYLE_LABEL[s] || s)}</span>`).join('')
-    : '<span class="tag"><span class="dot"></span>Soirée</span>';
+    : '<span class="tag"><span class="dot"></span>Party</span>';
 
   const num = dateOfWeekday(ev.dayIndex);
   const dayLabel = DAYS_SHORT[ev.dayIndex].toUpperCase();
@@ -182,15 +183,14 @@ function renderCard(ev) {
     ? `<div class="card-loc"><span aria-hidden="true">↗</span> ${ev.mapUrl ? `<a href="${escapeHTML(ev.mapUrl)}" target="_blank" rel="noopener">${escapeHTML(venue)}</a>` : escapeHTML(venue)}</div>`
     : '';
 
-  // Split workshops / social
   const acts = (ev.activities || []).slice().sort((a, b) => timeKey(a.time) - timeKey(b.time));
   const workshops = acts.filter((a) => !isSocial(a));
   const socials = acts.filter(isSocial);
-  const social = socials[0]; // si plusieurs apres merge ca devrait pas arriver, on prend le 1er
+  const social = socials[0];
 
   const workshopsHTML = workshops.length
     ? `<div>
-        <div class="sched-label">Cours</div>
+        <div class="sched-label">Classes</div>
         <ul class="sched-list">${workshops.map((a) => {
           const { who, style, level } = decomposeWorkshop(a.name);
           const meta = [style, level].filter(Boolean).join(' · ');
@@ -206,7 +206,7 @@ function renderCard(ev) {
   const socialHTML = social
     ? `<div class="social-box">
         <div class="sb-meta">
-          <span class="sb-label">Soirée</span>
+          <span class="sb-label">Party</span>
           <span class="sb-time">${escapeHTML(fmtTime(social.time))}</span>
           <span class="sb-title">${escapeHTML(social.name || 'Social Dance')}</span>
         </div>
@@ -223,7 +223,6 @@ function renderCard(ev) {
       </div>
     </div>
     <div class="card-bottom-text">
-      ${venue ? `<div class="card-eyebrow">${escapeHTML(venue.split(' ')[0])}</div>` : ''}
       <h2 class="card-title" dir="auto">${escapeHTML(title)}</h2>
       ${venueHTML}
       <div class="schedule">
@@ -234,14 +233,9 @@ function renderCard(ev) {
   </article>`;
 }
 
-function firstActivityTimeKey(ev) {
-  const times = (ev.activities || []).map((x) => timeKey(x.time));
-  return times.length ? Math.min(...times) : 9999;
-}
-
+// ── Cards view with rolling scroll across days ────────────
 let scrollSpyObs = null;
 let scrollSpyMuted = false;
-
 function setupScrollSpy() {
   if (scrollSpyObs) scrollSpyObs.disconnect();
   const sections = $cards.querySelectorAll('.day-section');
@@ -267,8 +261,6 @@ function setupScrollSpy() {
 function renderCards() {
   $cards.setAttribute('aria-busy', 'false');
   const events = cache || [];
-  // Construit les sections : le jour selectionne en 1er (meme si vide),
-  // puis les jours suivants qui ont des evenements (amorce/scroll continu).
   const sections = [];
   for (let offset = 0; offset < 7; offset++) {
     const dayIdx = (selectedDay + offset) % 7;
@@ -277,57 +269,48 @@ function renderCards() {
     evs.sort((a, b) => firstActivityTimeKey(a) - firstActivityTimeKey(b));
     sections.push({ dayIdx, events: evs });
   }
-
   if (!sections.length || (sections.length === 1 && !sections[0].events.length)) {
-    $cards.innerHTML = `<div class="empty"><strong>Aucune soirée connue cette semaine.</strong>Le scraper ajoute dès qu'un message tombe dans le groupe.</div>`;
+    $cards.innerHTML = `<div class="empty"><strong>No party scheduled this week yet.</strong>The scraper will add them as soon as a message lands in the group.</div>`;
     return;
   }
-
   $cards.innerHTML = sections
     .map((sec, i) => {
       const empty = sec.events.length === 0;
       const nextLabel = sections[i + 1] ? DAYS_FULL[sections[i + 1].dayIdx] : null;
       const headerHTML = `<div class="day-section-header">
         <span class="dsh-day">${DAYS_FULL[sec.dayIdx]}</span>
-        <span class="dsh-count">${empty ? '—' : `${sec.events.length} soirée${sec.events.length > 1 ? 's' : ''}`}</span>
+        <span class="dsh-count">${empty ? '—' : `${sec.events.length} part${sec.events.length > 1 ? 'ies' : 'y'}`}</span>
       </div>`;
       const bodyHTML = empty
-        ? `<div class="day-empty">Pas encore de soirée prévue.${nextLabel ? `<br><span class="de-hint">Continue à scroller pour voir ${nextLabel.toLowerCase()} ↓</span>` : ''}</div>`
+        ? `<div class="day-empty">No party scheduled yet.${nextLabel ? `<br><span class="de-hint">Keep scrolling for ${nextLabel} ↓</span>` : ''}</div>`
         : sec.events.map(renderCard).join('');
       return `<div class="day-section" data-day="${sec.dayIdx}">${headerHTML}${bodyHTML}</div>`;
     })
     .join('');
-
   setupScrollSpy();
 }
 
-// ── Calendar mois ─────────────────────────────────────────
+// ── Calendar month grid ───────────────────────────────────
 function renderCalendar() {
   const month = calCursor.getMonth();
   const year = calCursor.getFullYear();
   $calLabel.textContent = `${MONTHS_FULL[month]} ${year}`;
-
-  // events comptes par dayIndex (recurrent)
   const countByDayIdx = Array(7).fill(0);
   for (const e of cache || []) countByDayIdx[e.dayIndex]++;
 
   const first = new Date(year, month, 1);
-  const startWeekday = first.getDay(); // 0 dim
+  const startWeekday = first.getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const daysInPrev = new Date(year, month, 0).getDate();
 
   const cells = [];
-  // Cases du mois precedent
   for (let i = startWeekday - 1; i >= 0; i--) {
-    const date = daysInPrev - i;
-    cells.push({ date, dayIdx: (startWeekday - 1 - i + 7) % 7, other: true, month: month - 1 });
+    cells.push({ date: daysInPrev - i, dayIdx: (startWeekday - 1 - i + 7) % 7, other: true, month: month - 1 });
   }
-  // Mois courant
   for (let d = 1; d <= daysInMonth; d++) {
     const dt = new Date(year, month, d);
     cells.push({ date: d, dayIdx: dt.getDay(), other: false, month });
   }
-  // Completer 42 cases (6 semaines)
   while (cells.length < 42) {
     const last = cells[cells.length - 1];
     cells.push({ date: cells.length - (startWeekday + daysInMonth) + 1, dayIdx: (last.dayIdx + 1) % 7, other: true, month: month + 1 });
@@ -338,7 +321,7 @@ function renderCalendar() {
       const count = countByDayIdx[c.dayIdx];
       const isToday = !c.other && c.month === today.getMonth() && c.date === today.getDate() && year === today.getFullYear();
       const dots = '<span></span>'.repeat(Math.min(count, 3));
-      return `<button type="button" class="cal-day ${c.other ? 'is-other' : ''} ${count ? 'has-events' : ''} ${isToday ? 'is-today' : ''}" data-day="${c.dayIdx}" aria-label="${c.date} (${count} soirée${count > 1 ? 's' : ''})">
+      return `<button type="button" class="cal-day ${c.other ? 'is-other' : ''} ${count ? 'has-events' : ''} ${isToday ? 'is-today' : ''}" data-day="${c.dayIdx}" aria-label="${c.date} (${count} part${count > 1 ? 'ies' : 'y'})">
         <span class="cd-num">${c.date}</span>
         ${count ? `<span class="cd-dots">${dots}</span>` : ''}
       </button>`;
@@ -346,18 +329,9 @@ function renderCalendar() {
     .join('');
 }
 
-// ── Map (Leaflet : bornee a Playa, geocodage Nominatim cote serveur, geolocation user) ──
+// ── Map (Leaflet bounded to Playa, geocoded venues, user position, OSRM walking) ──
 const PLAYA_CENTER = [20.6296, -87.0739];
 const PLAYA_BOUNDS = [[20.585, -87.105], [20.685, -87.04]];
-let userMarker = null;
-let userPos = null;
-let venuesCache = null;
-let userMarkerCircle = null;
-
-try {
-  const last = localStorage.getItem('lastGeo');
-  if (last) userPos = JSON.parse(last);
-} catch { /* ignore */ }
 
 function ensureMap() {
   if (mapInstance || typeof L === 'undefined') return;
@@ -389,6 +363,12 @@ function fmtDist(m) {
   if (m < 1000) return `${Math.round(m)} m`;
   return `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`;
 }
+function fmtDuration(sec) {
+  if (sec == null) return '';
+  const m = Math.round(sec / 60);
+  if (m < 60) return `${m} min walk`;
+  return `${Math.floor(m / 60)}h ${m % 60}m walk`;
+}
 
 function requestGeolocation() {
   if (!navigator.geolocation || sessionStorage.getItem('geoRequested')) return;
@@ -399,7 +379,7 @@ function requestGeolocation() {
       try { localStorage.setItem('lastGeo', JSON.stringify(userPos)); } catch { /* ignore */ }
       if (activeView === 'map') renderMap();
     },
-    () => { /* permission refusee ou erreur — silent */ },
+    () => { /* permission denied */ },
     { enableHighAccuracy: false, timeout: 7000, maximumAge: 5 * 60_000 }
   );
 }
@@ -413,13 +393,26 @@ async function loadVenues() {
   return venuesCache;
 }
 
+const routeCache = new Map(); // key: "lat1,lon1|lat2,lon2"
+async function fetchRoute(from, to) {
+  const key = `${from.lat.toFixed(5)},${from.lon.toFixed(5)}|${to.lat.toFixed(5)},${to.lon.toFixed(5)}`;
+  if (routeCache.has(key)) return routeCache.get(key);
+  try {
+    const r = await fetch(`/api/route?from=${from.lat},${from.lon}&to=${to.lat},${to.lon}`);
+    const data = await r.json();
+    if (!data.ok) { routeCache.set(key, null); return null; }
+    routeCache.set(key, data);
+    return data;
+  } catch { routeCache.set(key, null); return null; }
+}
+
 function clearMarkers() {
   mapMarkers.forEach((m) => mapInstance.removeLayer(m));
   mapMarkers = [];
   if (userMarker) { mapInstance.removeLayer(userMarker); userMarker = null; }
   if (userMarkerCircle) { mapInstance.removeLayer(userMarkerCircle); userMarkerCircle = null; }
+  if (mapRouteLayer) { mapInstance.removeLayer(mapRouteLayer); mapRouteLayer = null; }
 }
-
 function venueIcon(count) {
   return L.divIcon({
     className: 'venue-pin',
@@ -428,7 +421,6 @@ function venueIcon(count) {
     iconAnchor: [20, 40],
   });
 }
-
 function userIcon() {
   return L.divIcon({
     className: 'user-pin',
@@ -438,12 +430,21 @@ function userIcon() {
   });
 }
 
+function showRoute(venueCoords) {
+  if (!userPos || !mapInstance) return;
+  fetchRoute(userPos, venueCoords).then((route) => {
+    if (mapRouteLayer) { mapInstance.removeLayer(mapRouteLayer); mapRouteLayer = null; }
+    if (!route || !route.geometry) return;
+    mapRouteLayer = L.geoJSON(route.geometry, {
+      style: { color: '#ff7a3d', weight: 4, opacity: 0.85, dashArray: '0' },
+    }).addTo(mapInstance);
+  });
+}
+
 async function renderMap() {
   ensureMap();
   if (!mapInstance) return;
   clearMarkers();
-
-  // Demande la geoloc au 1er affichage de la map.
   if (!userPos) requestGeolocation();
 
   const venues = await loadVenues();
@@ -452,48 +453,49 @@ async function renderMap() {
   );
   $mapCount.textContent = forDay.length;
 
-  // User marker
   if (userPos && userPos.lat && userPos.lon) {
     userMarker = L.marker([userPos.lat, userPos.lon], { icon: userIcon(), interactive: false }).addTo(mapInstance);
     userMarkerCircle = L.circle([userPos.lat, userPos.lon], { radius: 60, color: '#3ea3ff', weight: 1, fillOpacity: 0.12 }).addTo(mapInstance);
   }
 
-  // Venue markers
   for (const v of forDay) {
-    const count = v.events.filter((ev) => ev.dayIndex === selectedDay).length;
-    const evList = v.events
-      .filter((ev) => ev.dayIndex === selectedDay)
-      .map((ev) => `<div class="vp-row">${(ev.title || v.displayName).slice(0, 60)}</div>`)
-      .join('');
+    const evsForDay = v.events.filter((ev) => ev.dayIndex === selectedDay);
+    const count = evsForDay.length;
+    const evList = evsForDay.map((ev) => `<div class="vp-row">${escapeHTML((ev.title || v.displayName).slice(0, 70))}</div>`).join('');
     const dist = userPos ? distanceMeters(userPos, { lat: v.lat, lon: v.lon }) : null;
-    const distHTML = dist != null ? `<div class="vp-dist">📍 ${fmtDist(dist)} de toi</div>` : '';
-    const link = v.mapUrl ? `<div class="vp-link"><a href="${v.mapUrl}" target="_blank" rel="noopener">Itinéraire ↗</a></div>` : '';
-    const m = L.marker([v.lat, v.lon], { icon: venueIcon(count) })
-      .addTo(mapInstance)
-      .bindPopup(`<strong>${v.displayName}</strong>${distHTML}<div class="vp-evs">${evList}</div>${link}`);
+    const distHTML = dist != null ? `<div class="vp-dist" id="vp-dist-${v.venueKey}">📍 ${fmtDist(dist)} away · calculating walk…</div>` : '';
+    const link = v.mapUrl ? `<div class="vp-link"><a href="${escapeHTML(v.mapUrl)}" target="_blank" rel="noopener">Directions ↗</a></div>` : '';
+    const popupHTML = `<strong>${escapeHTML(v.displayName)}</strong>${distHTML}<div class="vp-evs">${evList}</div>${link}`;
+    const m = L.marker([v.lat, v.lon], { icon: venueIcon(count) }).addTo(mapInstance).bindPopup(popupHTML);
+    m.on('popupopen', async () => {
+      showRoute({ lat: v.lat, lon: v.lon });
+      if (userPos) {
+        const route = await fetchRoute(userPos, { lat: v.lat, lon: v.lon });
+        const el = document.getElementById(`vp-dist-${v.venueKey}`);
+        if (el && route) el.innerHTML = `🚶 ${fmtDuration(route.durationSeconds)} · ${fmtDist(route.distanceMeters)}`;
+      }
+    });
     mapMarkers.push(m);
   }
 
-  // Si pas de venue ce jour, recadre Playa centre.
   if (!forDay.length) {
     mapInstance.fitBounds(PLAYA_BOUNDS, { padding: [10, 10] });
   } else {
     const group = L.featureGroup([...mapMarkers, ...(userMarker ? [userMarker] : [])]);
     mapInstance.fitBounds(group.getBounds().pad(0.2), { maxZoom: 16 });
   }
-
   setTimeout(() => mapInstance.invalidateSize(), 100);
 }
 
 // ── View switching ────────────────────────────────────────
 function switchView(view) {
   activeView = view;
-  document.querySelectorAll('.tabbar button').forEach((b) =>
-    b.classList.toggle('active', b.dataset.view === view)
-  );
+  document.querySelectorAll('.tabbar button').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
   $cards.hidden = view !== 'cards';
   $cal.hidden = view !== 'calendar';
   $mapView.hidden = view !== 'map';
+  // Day strip is only useful for cards + map (calendar already shows all days).
+  $strip.hidden = view === 'calendar';
   refresh();
 }
 
@@ -526,8 +528,6 @@ $strip.addEventListener('click', (e) => {
   if (day === selectedDay) return;
   selectedDay = day;
   if (activeView === 'cards') {
-    // Re-render avec le jour clique en tete, puis scroll en haut.
-    // Mute le scroll-spy le temps que le scroll smooth se cale.
     scrollSpyMuted = true;
     renderCards();
     renderDayStrip();
