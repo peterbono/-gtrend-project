@@ -7,36 +7,58 @@
   <title>Playa Dance · Soirées</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&display=swap" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header class="top">
-    <div class="topbar">
-      <div class="caption" id="today-caption">—</div>
-      <h1>Soirées</h1>
-    </div>
-    <nav id="days" class="days" role="tablist" aria-label="Jour de la semaine"></nav>
+    <div class="caption" id="today-caption">—</div>
+    <nav id="day-strip" class="day-strip" aria-label="Jour de la semaine"></nav>
   </header>
 
-  <main>
-    <section id="cards" class="cards-view" aria-hidden="false">
+  <main id="main">
+    <section id="cards" class="cards-view" aria-live="polite" aria-busy="false">
       <p class="loading">Chargement…</p>
     </section>
-    <section id="calendar" class="calendar-view" hidden aria-hidden="true">
-      <div class="week-grid" id="week-grid"></div>
+
+    <section id="calendar" class="calendar-view" hidden>
+      <div class="cal-header">
+        <button id="cal-prev" class="cal-nav" aria-label="Mois précédent">‹</button>
+        <h2 id="cal-month-label" class="cal-month-label">—</h2>
+        <button id="cal-next" class="cal-nav" aria-label="Mois suivant">›</button>
+      </div>
+      <div class="cal-weekdays" aria-hidden="true">
+        <span>Dim</span><span>Lun</span><span>Mar</span><span>Mer</span><span>Jeu</span><span>Ven</span><span>Sam</span>
+      </div>
+      <div id="cal-grid" class="cal-grid"></div>
+    </section>
+
+    <section id="map-view" class="map-view" hidden>
+      <div id="map" class="map"></div>
+      <div class="map-legend">
+        <span class="ml-info">Lieux des soirées · <span id="map-count">0</span></span>
+      </div>
     </section>
   </main>
 
-  <nav class="tabbar" role="tablist" aria-label="Mode d'affichage">
+  <nav class="tabbar" aria-label="Mode d'affichage">
     <button data-view="cards" class="active" type="button">
-      <span class="icon" aria-hidden="true">▤</span><span>Cartes</span>
+      <span class="t-icon" aria-hidden="true">▤</span>
+      <span class="t-label">Cartes</span>
     </button>
     <button data-view="calendar" type="button">
-      <span class="icon" aria-hidden="true">▦</span><span>Calendrier</span>
+      <span class="t-icon" aria-hidden="true">▦</span>
+      <span class="t-label">Calendrier</span>
+    </button>
+    <button data-view="map" type="button">
+      <span class="t-icon" aria-hidden="true">◉</span>
+      <span class="t-label">Carte</span>
     </button>
   </nav>
 
-  <script src="app.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin defer></script>
+  <script src="app.js" defer></script>
 </body>
 </html>
