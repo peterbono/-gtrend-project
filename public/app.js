@@ -234,19 +234,71 @@ function renderCard(ev) {
   </article>`;
 }
 
+function firstActivityTimeKey(ev) {
+  const times = (ev.activities || []).map((x) => timeKey(x.time));
+  return times.length ? Math.min(...times) : 9999;
+}
+
+let scrollSpyObs = null;
+let scrollSpyMuted = false;
+
+function setupScrollSpy() {
+  if (scrollSpyObs) scrollSpyObs.disconnect();
+  const sections = $cards.querySelectorAll('.day-section');
+  if (sections.length <= 1) return;
+  scrollSpyObs = new IntersectionObserver(
+    (entries) => {
+      if (scrollSpyMuted) return;
+      const visibles = entries.filter((e) => e.isIntersecting);
+      if (!visibles.length) return;
+      visibles.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+      const top = visibles[0].target;
+      const day = Number(top.dataset.day);
+      if (day !== selectedDay) {
+        selectedDay = day;
+        renderDayStrip();
+      }
+    },
+    { rootMargin: '-170px 0px -55% 0px', threshold: 0 }
+  );
+  sections.forEach((s) => scrollSpyObs.observe(s));
+}
+
 function renderCards() {
-  const filtered = (cache || []).filter((e) => e.dayIndex === selectedDay);
-  filtered.sort((a, b) => {
-    const at = Math.min(...(a.activities || []).map((x) => timeKey(x.time)));
-    const bt = Math.min(...(b.activities || []).map((x) => timeKey(x.time)));
-    return at - bt;
-  });
   $cards.setAttribute('aria-busy', 'false');
-  if (!filtered.length) {
-    $cards.innerHTML = `<div class="empty"><strong>Pas encore de soirée pour ${DAYS_FULL[selectedDay]}.</strong>Le scraper ajoute dès qu'un message tombe dans le groupe.</div>`;
+  const events = cache || [];
+  // Construit les sections : le jour selectionne en 1er (meme si vide),
+  // puis les jours suivants qui ont des evenements (amorce/scroll continu).
+  const sections = [];
+  for (let offset = 0; offset < 7; offset++) {
+    const dayIdx = (selectedDay + offset) % 7;
+    const evs = events.filter((e) => e.dayIndex === dayIdx);
+    if (offset > 0 && evs.length === 0) continue;
+    evs.sort((a, b) => firstActivityTimeKey(a) - firstActivityTimeKey(b));
+    sections.push({ dayIdx, events: evs });
+  }
+
+  if (!sections.length || (sections.length === 1 && !sections[0].events.length)) {
+    $cards.innerHTML = `<div class="empty"><strong>Aucune soirée connue cette semaine.</strong>Le scraper ajoute dès qu'un message tombe dans le groupe.</div>`;
     return;
   }
-  $cards.innerHTML = filtered.map(renderCard).join('');
+
+  $cards.innerHTML = sections
+    .map((sec, i) => {
+      const empty = sec.events.length === 0;
+      const nextLabel = sections[i + 1] ? DAYS_FULL[sections[i + 1].dayIdx] : null;
+      const headerHTML = `<div class="day-section-header">
+        <span class="dsh-day">${DAYS_FULL[sec.dayIdx]}</span>
+        <span class="dsh-count">${empty ? '—' : `${sec.events.length} soirée${sec.events.length > 1 ? 's' : ''}`}</span>
+      </div>`;
+      const bodyHTML = empty
+        ? `<div class="day-empty">Pas encore de soirée prévue.${nextLabel ? `<br><span class="de-hint">Continue à scroller pour voir ${nextLabel.toLowerCase()} ↓</span>` : ''}</div>`
+        : sec.events.map(renderCard).join('');
+      return `<div class="day-section" data-day="${sec.dayIdx}">${headerHTML}${bodyHTML}</div>`;
+    })
+    .join('');
+
+  setupScrollSpy();
 }
 
 // ── Calendar mois ─────────────────────────────────────────
@@ -294,31 +346,142 @@ function renderCalendar() {
     .join('');
 }
 
-// ── Map (Leaflet stub — markers stub par defaut Playa center) ──
+// ── Map (Leaflet : bornee a Playa, geocodage Nominatim cote serveur, geolocation user) ──
 const PLAYA_CENTER = [20.6296, -87.0739];
+const PLAYA_BOUNDS = [[20.585, -87.105], [20.685, -87.04]];
+let userMarker = null;
+let userPos = null;
+let venuesCache = null;
+let userMarkerCircle = null;
+
+try {
+  const last = localStorage.getItem('lastGeo');
+  if (last) userPos = JSON.parse(last);
+} catch { /* ignore */ }
+
 function ensureMap() {
   if (mapInstance || typeof L === 'undefined') return;
-  mapInstance = L.map('map', { zoomControl: true, attributionControl: true }).setView(PLAYA_CENTER, 14);
+  mapInstance = L.map('map', {
+    zoomControl: true,
+    attributionControl: true,
+    maxBounds: PLAYA_BOUNDS,
+    maxBoundsViscosity: 1.0,
+    minZoom: 13,
+    maxZoom: 18,
+  }).fitBounds(PLAYA_BOUNDS, { padding: [10, 10] });
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
     attribution: '© OpenStreetMap',
+    bounds: PLAYA_BOUNDS,
   }).addTo(mapInstance);
 }
 
-function renderMap() {
-  ensureMap();
-  if (!mapInstance) return;
+function distanceMeters(a, b) {
+  const R = 6371000;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lon - a.lon);
+  const lat1 = toRad(a.lat), lat2 = toRad(b.lat);
+  const s = Math.sin(dLat / 2) ** 2 + Math.sin(dLon / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+function fmtDist(m) {
+  if (m == null) return '';
+  if (m < 1000) return `${Math.round(m)} m`;
+  return `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`;
+}
+
+function requestGeolocation() {
+  if (!navigator.geolocation || sessionStorage.getItem('geoRequested')) return;
+  sessionStorage.setItem('geoRequested', '1');
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      userPos = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+      try { localStorage.setItem('lastGeo', JSON.stringify(userPos)); } catch { /* ignore */ }
+      if (activeView === 'map') renderMap();
+    },
+    () => { /* permission refusee ou erreur — silent */ },
+    { enableHighAccuracy: false, timeout: 7000, maximumAge: 5 * 60_000 }
+  );
+}
+
+async function loadVenues() {
+  if (venuesCache) return venuesCache;
+  try {
+    const r = await fetch('/api/map');
+    venuesCache = (await r.json()).venues || [];
+  } catch { venuesCache = []; }
+  return venuesCache;
+}
+
+function clearMarkers() {
   mapMarkers.forEach((m) => mapInstance.removeLayer(m));
   mapMarkers = [];
-  const filtered = (cache || []).filter((e) => e.dayIndex === selectedDay);
-  $mapCount.textContent = filtered.length;
-  // TODO: geocodage venues. En attendant, marker fictif sur Playa center si events presents.
-  if (filtered.length) {
-    const m = L.marker(PLAYA_CENTER).addTo(mapInstance).bindPopup(
-      `<strong>${filtered.length} soirée${filtered.length > 1 ? 's' : ''}</strong><br>${DAYS_FULL[selectedDay]}<br><em>Géocodage venues à venir</em>`
-    );
+  if (userMarker) { mapInstance.removeLayer(userMarker); userMarker = null; }
+  if (userMarkerCircle) { mapInstance.removeLayer(userMarkerCircle); userMarkerCircle = null; }
+}
+
+function venueIcon(count) {
+  return L.divIcon({
+    className: 'venue-pin',
+    html: `<div class="vp-inner"><span>${count}</span></div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+  });
+}
+
+function userIcon() {
+  return L.divIcon({
+    className: 'user-pin',
+    html: '<div class="up-dot"></div><div class="up-ring"></div>',
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+  });
+}
+
+async function renderMap() {
+  ensureMap();
+  if (!mapInstance) return;
+  clearMarkers();
+
+  // Demande la geoloc au 1er affichage de la map.
+  if (!userPos) requestGeolocation();
+
+  const venues = await loadVenues();
+  const forDay = venues.filter((v) =>
+    v.events.some((ev) => ev.dayIndex === selectedDay) && v.lat != null && v.lon != null
+  );
+  $mapCount.textContent = forDay.length;
+
+  // User marker
+  if (userPos && userPos.lat && userPos.lon) {
+    userMarker = L.marker([userPos.lat, userPos.lon], { icon: userIcon(), interactive: false }).addTo(mapInstance);
+    userMarkerCircle = L.circle([userPos.lat, userPos.lon], { radius: 60, color: '#3ea3ff', weight: 1, fillOpacity: 0.12 }).addTo(mapInstance);
+  }
+
+  // Venue markers
+  for (const v of forDay) {
+    const count = v.events.filter((ev) => ev.dayIndex === selectedDay).length;
+    const evList = v.events
+      .filter((ev) => ev.dayIndex === selectedDay)
+      .map((ev) => `<div class="vp-row">${(ev.title || v.displayName).slice(0, 60)}</div>`)
+      .join('');
+    const dist = userPos ? distanceMeters(userPos, { lat: v.lat, lon: v.lon }) : null;
+    const distHTML = dist != null ? `<div class="vp-dist">📍 ${fmtDist(dist)} de toi</div>` : '';
+    const link = v.mapUrl ? `<div class="vp-link"><a href="${v.mapUrl}" target="_blank" rel="noopener">Itinéraire ↗</a></div>` : '';
+    const m = L.marker([v.lat, v.lon], { icon: venueIcon(count) })
+      .addTo(mapInstance)
+      .bindPopup(`<strong>${v.displayName}</strong>${distHTML}<div class="vp-evs">${evList}</div>${link}`);
     mapMarkers.push(m);
   }
+
+  // Si pas de venue ce jour, recadre Playa centre.
+  if (!forDay.length) {
+    mapInstance.fitBounds(PLAYA_BOUNDS, { padding: [10, 10] });
+  } else {
+    const group = L.featureGroup([...mapMarkers, ...(userMarker ? [userMarker] : [])]);
+    mapInstance.fitBounds(group.getBounds().pad(0.2), { maxZoom: 16 });
+  }
+
   setTimeout(() => mapInstance.invalidateSize(), 100);
 }
 
@@ -359,8 +522,20 @@ async function load({ pollSkipIfHidden = false } = {}) {
 $strip.addEventListener('click', (e) => {
   const btn = e.target.closest('button');
   if (!btn) return;
-  selectedDay = Number(btn.dataset.day);
-  refresh();
+  const day = Number(btn.dataset.day);
+  if (day === selectedDay) return;
+  selectedDay = day;
+  if (activeView === 'cards') {
+    // Re-render avec le jour clique en tete, puis scroll en haut.
+    // Mute le scroll-spy le temps que le scroll smooth se cale.
+    scrollSpyMuted = true;
+    renderCards();
+    renderDayStrip();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => { scrollSpyMuted = false; }, 800);
+  } else {
+    refresh();
+  }
 });
 
 $tabbar.addEventListener('click', (e) => {
