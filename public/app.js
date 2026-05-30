@@ -240,7 +240,12 @@ function renderCard(ev) {
       tagLabels = ['Class'];
     }
   }
-  const tags = tagLabels.map((t) => `<span class="tag"><span class="dot"></span>${escapeHTML(t)}</span>`).join('');
+  const tagsHTML = tagLabels.map((t) => `<span class="tag"><span class="dot"></span>${escapeHTML(t)}</span>`).join('');
+  // Tag prix distinct, accent jaune/orange pour le faire ressortir.
+  const priceHTML = ev.price
+    ? `<span class="tag tag-price">${escapeHTML(ev.price)}</span>`
+    : '';
+  const tags = tagsHTML + priceHTML;
 
   const num = dateOfWeekday(ev.dayIndex);
   const dayLabel = DAYS_SHORT[ev.dayIndex].toUpperCase();

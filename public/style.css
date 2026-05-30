@@ -227,6 +227,11 @@ main {
   border: 1px solid rgba(255,255,255,0.08);
 }
 .tag .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.85; }
+.tag.tag-price {
+  background: rgba(255, 215, 61, 0.92);
+  color: #1a1a2e;
+  border-color: rgba(255, 215, 61, 0.5);
+}
 
 .day-badge {
   background: rgba(255,255,255,0.96);

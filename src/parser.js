@@ -53,6 +53,23 @@ const ONLY_URL_RE = /^\s*https?:\/\/\S+\s*$/i;
 const ONLY_TIME_RE = /^\s*\d{1,2}(?::\d{2})?\s*(?:[apAP]m?)?\s*$/;
 const PIN = '\u{1F4CD}'; // 📍
 
+// Prix : capture montants ($200 MXN, $125, 750 pesos) ou mention "gratis/free/donation".
+const PRICE_AMOUNT_RE = /\$\s?(\d+(?:[.,]\d+)?)\s*(MXN|USD|EUR|pesos?)?/i;
+const PRICE_FREE_RE = /\b(free|gratis|gratuit|gratuito|sin\s*costo)\b/i;
+const PRICE_DONATION_RE = /\b(cooperaci[oó]n\s*voluntaria|voluntary\s*donation|donaci[oó]n|donation)\b/i;
+
+function parsePrice(line) {
+  if (PRICE_FREE_RE.test(line)) return 'Free';
+  if (PRICE_DONATION_RE.test(line)) return 'Donation';
+  const m = line.match(PRICE_AMOUNT_RE);
+  if (m) {
+    const amount = m[1].replace(',', '.');
+    const cur = (m[2] || 'MXN').toUpperCase().replace(/^PESOS?$/, 'MXN');
+    return `$${amount} ${cur}`;
+  }
+  return null;
+}
+
 function looksLikeTitle(s) {
   if (!s) return false;
   if (ONLY_URL_RE.test(s)) return false;
@@ -98,6 +115,7 @@ export function parseMessage(text) {
         title,
         venue: null,
         mapUrl: null,
+        price: null,
         activities: [],
       };
       continue;
@@ -128,6 +146,15 @@ export function parseMessage(text) {
     if (url) {
       current.mapUrl = url[1];
       continue;
+    }
+
+    // Prix : on capture le premier prix non-nul rencontre (sauf si "Free"/"Donation"
+    // qui sont prioritaires sur un montant chiffre).
+    const priceCandidate = parsePrice(line);
+    if (priceCandidate) {
+      if (!current.price || priceCandidate === 'Free' || priceCandidate === 'Donation') {
+        current.price = priceCandidate;
+      }
     }
 
     const t = parseTime(line);

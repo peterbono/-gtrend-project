@@ -12,6 +12,7 @@ const MESSAGES = [
 💃🏻 20:00 h – Clases de bachata (Principiante e Intermedio)
 ✅ 21:00 h – Baile social
 📍 The Warehouse, Av 20 entre 4 & 6
+💰 $200 MXN cover (2 clases + social) — Solo social $100 MXN
 https://maps.app.goo.gl/fsMC1MRKXdkfbyez8`,
 
   // SABADO — Beach Paradise @ Coco Beach
@@ -19,7 +20,7 @@ https://maps.app.goo.gl/fsMC1MRKXdkfbyez8`,
 
 🗓️ SÁBADO, 30 de Mayo
 17:00 - 19:30 Bachata Kizomba Salsa Social
-💵 Cooperación voluntaria
+💵 Cooperación voluntaria (donation)
 📍 Coco Beach
 https://maps.app.goo.gl/4e9Q2VPq61Wf75xx6`,
 
@@ -40,6 +41,7 @@ Beyond Styles. Explore the Movement!
 Every Saturday
 
 11:00 - 13:00 Open Movement Session
+💰 Free
 📍 Callejón del Arte, 6 bis entre 10 y 15
 https://maps.app.goo.gl/ApF3Q8E9KGSFDRc68`,
 
@@ -52,6 +54,7 @@ Dress code: Elegant Tango Vibes.
 
 17:30 - Clase de Tango
 18:30 - Milonga
+💰 Clase + Milonga $125 MXN — Solo Milonga $80 MXN
 📍 Hyatt Centric Playa del Carmen – Alessya Rooftop, Calle Corazón
 https://maps.app.goo.gl/e3gmffqsz3UrS7gY6`,
 
@@ -69,6 +72,7 @@ Ambiente elegante, buena vibra.
 20:00 Clase de Bachata Beginner
 20:00 Clase de Bachata Intermediate/Advanced
 21:00 Social Dance
+💰 $200 MXN (2 clases + social) — Solo social $100 MXN
 📍 Mexcalli, 5th Ave btw 4th & 6th St, Playa del Carmen`,
 ];
 

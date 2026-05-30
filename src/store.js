@@ -143,6 +143,7 @@ function mergeEvent(prev, incoming, meta) {
     title: better(prev.title, incoming.title),
     venue: better(prev.venue, incoming.venue),
     mapUrl: prev.mapUrl || incoming.mapUrl || null,
+    price: prev.price || incoming.price || null,
     activities: mergeActivities(prev.activities, incoming.activities),
     source: prev.source === 'vision' || meta.source === 'vision' ? 'vision' : (prev.source || meta.source || 'text'),
   };
