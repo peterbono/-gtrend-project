@@ -4,3 +4,4 @@ data/events.json
 .wwebjs_auth/
 .wwebjs_cache/
 *.log
+.vercel
