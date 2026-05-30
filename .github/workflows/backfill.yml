@@ -4,16 +4,21 @@
 name: Backfill WhatsApp history
 
 on:
+  schedule:
+    # Backfill toutes les 4h, decale de 30 min pour eviter de collisionner
+    # avec le cron horaire :00. Couvre 36h pour rattraper les coupures eventuelles
+    # (cron rate, panne WhatsApp, etc.) avec une bonne marge de dedup.
+    - cron: '30 */4 * * *'
   workflow_dispatch:
     inputs:
       hours:
         description: "Heures d'historique a fetch"
         required: false
-        default: "24"
+        default: "36"
       limit:
         description: "Nombre max de messages a parcourir"
         required: false
-        default: "200"
+        default: "300"
 
 concurrency:
   group: whatsapp-listener
@@ -58,10 +63,12 @@ jobs:
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           VISION_MODEL: ${{ vars.VISION_MODEL || 'gemini-2.5-flash' }}
           PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
-          BACKFILL_HOURS: ${{ inputs.hours || '24' }}
-          BACKFILL_LIMIT: ${{ inputs.limit || '200' }}
+          BACKFILL_HOURS: ${{ inputs.hours || '36' }}
+          BACKFILL_LIMIT: ${{ inputs.limit || '300' }}
           READY_TIMEOUT_SECONDS: "240"
         run: node src/backfill.js
 
