@@ -215,23 +215,27 @@ main {
 .tag {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   background: rgba(0,0,0,0.45);
   color: #fff;
   font-weight: 700;
   font-size: 0.65rem;
+  line-height: 1;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 6px 10px;
+  padding: 0 11px;
+  min-height: 26px;
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.08);
+  box-sizing: border-box;
 }
-.tag .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.85; }
+.tag .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.85; flex-shrink: 0; }
 .tag.tag-price {
   background: rgba(255, 215, 61, 0.92);
   color: #1a1a2e;
   border-color: rgba(255, 215, 61, 0.5);
 }
+.tags { align-items: center; }
 
 .day-badge {
   background: rgba(255,255,255,0.96);
