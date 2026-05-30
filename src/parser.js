@@ -1,12 +1,12 @@
 import { detectDay } from './days.js';
 
 // Retire emojis / puces / espaces / chiffres "1️⃣ 2️⃣ ..." en debut de ligne.
-// Le sequence "N️⃣" est la "keycap" composite (ex: 1️⃣) — souvent
-// utilisee pour numeroter les items dans une liste WhatsApp.
+// On utilise \p{Extended_Pictographic} pour couvrir TOUS les emojis (ES2018+)
+// plus les modificateurs (skin tones, variation selectors, ZWJ).
 function stripLead(line) {
   return line
     .replace(/^([\d]️⃣|️⃣)+/u, '') // keycaps "1️⃣"
-    .replace(/^[\s✅\u{1F525}\u{1F31F}\u{1F305}\u{1F4A5}\u{1F483}✨•\-–·*►▶▪◆▫○●–—]+/u, '')
+    .replace(/^[\s\p{Extended_Pictographic}\u{FE0F}\u{200D}\u{1F3FB}-\u{1F3FF}•\-–·*►▶▪◆▫○●—]+/u, '')
     .trim();
 }
 
@@ -38,8 +38,11 @@ function parseTime(line) {
   if (!m) return null;
   const time = m[1].replace(/\s+/g, '').toLowerCase();
   let name = clean.slice(m[0].length).replace(/^[\s:–-]+/, '').trim();
+  // Strippe le "h" espagnol/portugais ("19:00 h –", "19h –") + tirets restants.
+  name = name.replace(/^h(?:rs?|oras?)?\b\s*/i, '');
+  name = name.replace(/^[–\-—]+\s*/, '').trim();
   name = stripMarkdown(name);
-  // Nettoie les keycaps numerotes residuels au milieu : "5️⃣pm" etc.
+  // Nettoie les keycaps residuels et les emoji isoles au milieu.
   name = name.replace(/[\d]️⃣/gu, '').replace(/️⃣/gu, '').replace(/\s+/g, ' ').trim();
   if (!name || name.length < 2) return null;
   return { time, name };
