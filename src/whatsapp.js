@@ -2,12 +2,14 @@ import pkg from 'whatsapp-web.js';
 import { parseMessage } from './parser.js';
 import { upsertMany, storageMode } from './store.js';
 import { extractFromImage, visionEnabled } from './vision.js';
+import { matchesAnyGroup, parseGroupNames } from './group-match.js';
 
 const { Client, LocalAuth } = pkg;
 
 // Demarre l'ecoute WhatsApp. Callbacks optionnels : onQr(qr), onPairingCode(code), onReady().
 export function startListener({ onQr, onPairingCode, onReady } = {}) {
   const GROUP_NAME = process.env.GROUP_NAME || 'PDC Dance Socials';
+  const groupTargets = parseGroupNames(GROUP_NAME);
   // Numero (avec indicatif, ex 5219991234567) pour lier SANS QR, via un code a taper.
   const pairPhone = (process.env.LINK_PHONE || '').replace(/\D/g, '');
 
@@ -41,7 +43,8 @@ export function startListener({ onQr, onPairingCode, onReady } = {}) {
   });
   client.on('authenticated', () => console.log('✅ Authentifie. Session sauvegardee.'));
   client.on('ready', () => {
-    console.log(`🚀 Connecte. J'ecoute le groupe : "${GROUP_NAME}"`);
+    const label = groupTargets.length > 1 ? `${groupTargets.length} groupes : ${groupTargets.map((g) => `"${g}"`).join(', ')}` : `"${GROUP_NAME}"`;
+    console.log(`🚀 Connecte. J'ecoute ${label}`);
     console.log(`   Stockage : ${storageMode}${storageMode === 'redis' ? ' (lien public live)' : ''}`);
     console.log(`   Vision flyers : ${visionEnabled() ? 'ACTIVEE' : 'desactivee (texte seul)'}`);
     onReady?.();
@@ -50,7 +53,7 @@ export function startListener({ onQr, onPairingCode, onReady } = {}) {
   async function handle(msg) {
     try {
       const chat = await msg.getChat();
-      if (!chat.isGroup || chat.name !== GROUP_NAME) return;
+      if (!chat.isGroup || !matchesAnyGroup(chat.name, GROUP_NAME)) return;
 
       let events = parseMessage(msg.body || '');
       let source = 'text';
