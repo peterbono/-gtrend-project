@@ -224,9 +224,23 @@ function renderDayStrip() {
 function renderCard(ev) {
   const styles = detectStyles(ev.activities);
   const gradient = styleGradient(styles);
-  const tags = styles.length
-    ? styles.slice(0, 3).map((s) => `<span class="tag"><span class="dot"></span>${escapeHTML(STYLE_LABEL[s] || s)}</span>`).join('')
-    : '<span class="tag"><span class="dot"></span>Party</span>';
+  // Tags : styles standards d'abord ; sinon "Party" si social present ; sinon
+  // un keyword extrait de l'activite (ex "Open Movement Session" -> "Open Movement").
+  let tagLabels;
+  if (styles.length) {
+    tagLabels = styles.slice(0, 3).map((s) => STYLE_LABEL[s] || s);
+  } else if ((ev.activities || []).some((a) => SOCIAL_RE.test(a.name || ''))) {
+    tagLabels = ['Party'];
+  } else {
+    const firstAct = (ev.activities || [])[0];
+    if (firstAct?.name) {
+      const words = firstAct.name.trim().split(/\s+/).slice(0, 2);
+      tagLabels = [words.join(' ').replace(/\b\w/g, (c) => c.toUpperCase())];
+    } else {
+      tagLabels = ['Class'];
+    }
+  }
+  const tags = tagLabels.map((t) => `<span class="tag"><span class="dot"></span>${escapeHTML(t)}</span>`).join('');
 
   const num = dateOfWeekday(ev.dayIndex);
   const dayLabel = DAYS_SHORT[ev.dayIndex].toUpperCase();
