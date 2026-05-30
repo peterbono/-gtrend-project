@@ -18,6 +18,8 @@ const norm = (s) =>
     // unifie apostrophes/guillemets typographiques vers leurs equivalents ASCII
     .replace(/[‘’‚‛]/g, "'")
     .replace(/[“”„‟]/g, '"')
+    // collapse espaces multiples (whatsapp insere parfois des doubles espaces)
+    .replace(/\s+/g, ' ')
     .toLowerCase()
     .trim();
 

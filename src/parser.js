@@ -22,7 +22,16 @@ function parseTime(line) {
 }
 
 const URL_RE = /(https?:\/\/\S+)/i;
+const ONLY_URL_RE = /^\s*https?:\/\/\S+\s*$/i;
+const ONLY_TIME_RE = /^\s*\d{1,2}(?::\d{2})?\s*(?:[apAP]m?)?\s*$/;
 const PIN = '\u{1F4CD}'; // 📍
+
+function looksLikeTitle(s) {
+  if (!s) return false;
+  if (ONLY_URL_RE.test(s)) return false;
+  if (ONLY_TIME_RE.test(s)) return false;
+  return true;
+}
 
 // Parse un bloc texte WhatsApp en une liste d'evenements (un par jour trouve).
 export function parseMessage(text) {
@@ -32,9 +41,11 @@ export function parseMessage(text) {
   let current = null;
 
   const push = () => {
-    if (current && (current.activities.length || current.venue)) {
-      events.push(current);
-    }
+    if (!current) return;
+    // Regle metier : un event valide = un venue ET au moins une activite horaire.
+    const hasRealVenue = current.venue && !ONLY_URL_RE.test(current.venue);
+    const hasActivity = current.activities.length > 0;
+    if (hasRealVenue && hasActivity) events.push(current);
     current = null;
   };
 
@@ -50,6 +61,8 @@ export function parseMessage(text) {
       const dash = line.split(/[–-]/);
       if (dash.length > 1) title = dash.slice(1).join('-').trim();
       title = title.replace(/[\u{1F300}-\u{1FAFF}☀-➿]/gu, '').trim();
+      // Garde le titre uniquement s'il a l'air d'un vrai titre (pas un timestamp ou une URL).
+      if (!looksLikeTitle(title)) title = '';
       current = {
         day: day.day,
         dayIndex: day.dayIndex,
@@ -64,7 +77,21 @@ export function parseMessage(text) {
     if (!current) continue; // lignes avant le premier jour : ignorees
 
     if (line.includes(PIN)) {
-      current.venue = line.split(PIN)[1].replace(/^[\s:]+/, '').trim() || current.venue;
+      const afterPin = line.split(PIN)[1].replace(/^[\s:]+/, '').trim();
+      if (afterPin) {
+        if (ONLY_URL_RE.test(afterPin)) {
+          // 📍 https://maps... = lien Maps du lieu, pas le nom du venue.
+          current.mapUrl = afterPin;
+        } else {
+          current.venue = afterPin;
+          // Le venue peut contenir l'URL en suffixe : on la separe.
+          const urlIn = afterPin.match(URL_RE);
+          if (urlIn) {
+            current.venue = afterPin.replace(urlIn[0], '').replace(/[\s,;|]+$/, '').trim();
+            current.mapUrl = current.mapUrl || urlIn[1];
+          }
+        }
+      }
       continue;
     }
 
@@ -82,8 +109,30 @@ export function parseMessage(text) {
   return events;
 }
 
+const ARTICLES = new Set(['the', 'la', 'el', 'le', 'les', 'los', 'las', 'a', 'an']);
+
+// Cle venue normalisee : 1-2 tokens significatifs (sans article ni nombre),
+// utilisee pour fusionner deux evenements qui referencent le meme lieu sous des noms differents.
+// Ex : "the WAREHOUSE, AVENIDA 20..." et "The Warehouse" -> "warehouse".
+export function venueKey(ev) {
+  let v = ev.venue || '';
+  if (ONLY_URL_RE.test(v)) v = '';
+  if (!v && ev.title && !ONLY_URL_RE.test(ev.title) && !ONLY_TIME_RE.test(ev.title)) v = ev.title;
+  if (!v) return null;
+  v = v.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  v = v.split(/[,;:|()/]/)[0];
+  const tokens = v
+    .split(/\s+/)
+    .map((t) => t.replace(/[^a-z0-9]/g, ''))
+    .filter((t) => t && !ARTICLES.has(t) && !/^\d+$/.test(t));
+  if (!tokens.length) return null;
+  return tokens.slice(0, 2).join('-');
+}
+
 // Identifiant stable d'un evenement (pour dedup / upsert).
 export function eventId(ev) {
-  const key = (ev.venue || ev.title || ev.day).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  return `${ev.dayIndex}-${key}`;
+  const vk = venueKey(ev);
+  if (vk) return `${ev.dayIndex}-${vk}`;
+  const fallback = (ev.title || ev.day).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  return `${ev.dayIndex}-${fallback}`;
 }
