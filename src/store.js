@@ -55,15 +55,22 @@ function better(a, b) {
 
 // Normalise une heure vers le format 24h "HH:MM" pour dedup cross-locale.
 // "5pm" -> "17:00", "17:30" -> "17:30", "5:30pm" -> "17:30", "9am" -> "09:00".
+// "7-11PM" -> "19:00" (le PM en fin de plage propage au debut sans marqueur).
 function normTime(t) {
   const s = (t || '').toLowerCase().trim();
-  // Prend le DEBUT d'une plage horaire ("9p-1a" -> "9p")
-  const startPart = s.split(/[-–]/)[0].trim();
+  const parts = s.split(/[-–]/);
+  const startPart = parts[0].trim();
+  const endPart = parts.slice(1).join('-').trim();
   const m = startPart.match(/^(\d{1,2})(?::(\d{2}))?\s*(am?|pm?)?\b/);
   if (!m) return s;
   let h = Number(m[1]);
   const min = Number(m[2] || 0);
-  const ap = m[3]?.[0]; // 'a' or 'p'
+  let ap = m[3]?.[0];
+  // Si le debut n'a pas d'am/pm, on cherche dans la fin de plage : "7-11PM" -> p
+  if (!ap && endPart) {
+    const endApMatch = endPart.match(/\b(am?|pm?)\b/i);
+    if (endApMatch) ap = endApMatch[1][0].toLowerCase();
+  }
   if (ap === 'p' && h < 12) h += 12;
   else if (ap === 'a' && h === 12) h = 0;
   return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
@@ -102,6 +109,9 @@ function nameTokens(s) {
 function isSubsetOrEqual(small, big) {
   const a = nameTokens(small.name);
   const b = nameTokens(big.name);
+  // Set vide (= nom 100% filler / stop-words) -> considere comme subset de
+  // n'importe quel non-vide a la meme heure (drop par mergeActivities).
+  if (a.size === 0 && b.size > 0) return true;
   if (a.size === 0) return false;
   for (const w of a) if (!b.has(w)) return false;
   return true;
