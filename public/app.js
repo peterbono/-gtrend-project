@@ -4,6 +4,10 @@
 
 const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAYS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+// Ordre d'affichage : lundi en premier, dimanche en dernier (convention europeenne).
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+// Reciproque : jsWeekday (0=dim) -> position dans WEEK_ORDER (0=lun).
+const monPos = (jsWeekday) => (jsWeekday + 6) % 7;
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -74,11 +78,20 @@ function dateOfWeekday(dayIndex) {
   return d.getDate();
 }
 
-function detectStyles(activities) {
+function detectStyles(activities, title = '', venue = '') {
   const found = new Set();
-  for (const a of activities || []) {
-    const m = (a.name || '').match(STYLE_RE);
-    if (m) {
+  // On considere TOUS les textes pertinents : activites + titre + venue.
+  // Permet par ex de capter "Brazilian ZOUK" mentionne dans le titre quand
+  // les activites parlent juste de "Level 2 Variations".
+  const texts = [
+    ...(activities || []).map((a) => a.name || ''),
+    title || '',
+    venue || '',
+  ];
+  for (const t of texts) {
+    let m;
+    const re = new RegExp(STYLE_RE.source, 'gi');
+    while ((m = re.exec(t)) !== null) {
       const key = m[1].toLowerCase().replace(/[\s-]/g, '');
       if (STYLE_HUE[key]) found.add(key);
     }
@@ -209,7 +222,8 @@ function firstActivityTimeKey(ev) {
 
 // ── Day strip ─────────────────────────────────────────────
 function renderDayStrip() {
-  $strip.innerHTML = DAYS_SHORT.map((label, i) => {
+  $strip.innerHTML = WEEK_ORDER.map((i) => {
+    const label = DAYS_SHORT[i];
     const active = i === selectedDay;
     const isToday = i === todayDayIndex;
     const num = dateOfWeekday(i);
@@ -383,21 +397,28 @@ function renderCalendar() {
   for (const e of cache || []) countByDayIdx[e.dayIndex]++;
 
   const first = new Date(year, month, 1);
-  const startWeekday = first.getDay();
+  // Decalage en convention lundi-first : 0 si le 1er du mois est un lundi, 6 si dimanche.
+  const startOffset = monPos(first.getDay());
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const daysInPrev = new Date(year, month, 0).getDate();
 
   const cells = [];
-  for (let i = startWeekday - 1; i >= 0; i--) {
-    cells.push({ date: daysInPrev - i, dayIdx: (startWeekday - 1 - i + 7) % 7, other: true, month: month - 1 });
+  // Cases du mois precedent qui completent la 1ere semaine.
+  for (let i = startOffset - 1; i >= 0; i--) {
+    const date = daysInPrev - i;
+    const dt = new Date(year, month - 1, date);
+    cells.push({ date, dayIdx: dt.getDay(), other: true, month: month - 1 });
   }
   for (let d = 1; d <= daysInMonth; d++) {
     const dt = new Date(year, month, d);
     cells.push({ date: d, dayIdx: dt.getDay(), other: false, month });
   }
+  // Completer 42 cases (6 semaines) avec le mois suivant.
+  let nextDate = 1;
   while (cells.length < 42) {
-    const last = cells[cells.length - 1];
-    cells.push({ date: cells.length - (startWeekday + daysInMonth) + 1, dayIdx: (last.dayIdx + 1) % 7, other: true, month: month + 1 });
+    const dt = new Date(year, month + 1, nextDate);
+    cells.push({ date: nextDate, dayIdx: dt.getDay(), other: true, month: month + 1 });
+    nextDate++;
   }
 
   $calGrid.innerHTML = cells

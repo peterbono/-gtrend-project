@@ -53,14 +53,43 @@ function better(a, b) {
   return score(b) > score(a) ? b : a;
 }
 
-// Normalise une heure pour comparaison : "9pm" -> "9p", "9:00pm" -> "9p", "9 p.m" -> "9p"
+// Normalise une heure vers le format 24h "HH:MM" pour dedup cross-locale.
+// "5pm" -> "17:00", "17:30" -> "17:30", "5:30pm" -> "17:30", "9am" -> "09:00".
 function normTime(t) {
-  return (t || '')
-    .toLowerCase()
-    .replace(/\s+/g, '')
-    .replace(/:00\b/g, '')
-    .replace(/p\.?m\.?/g, 'p')
-    .replace(/a\.?m\.?/g, 'a');
+  const s = (t || '').toLowerCase().trim();
+  // Prend le DEBUT d'une plage horaire ("9p-1a" -> "9p")
+  const startPart = s.split(/[-–]/)[0].trim();
+  const m = startPart.match(/^(\d{1,2})(?::(\d{2}))?\s*(am?|pm?)?\b/);
+  if (!m) return s;
+  let h = Number(m[1]);
+  const min = Number(m[2] || 0);
+  const ap = m[3]?.[0]; // 'a' or 'p'
+  if (ap === 'p' && h < 12) h += 12;
+  else if (ap === 'a' && h === 12) h = 0;
+  return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+}
+
+// "Salsa Class Beginner" est un sous-ensemble de "Clase de Salsa Beginner Intermediate"
+// si tous ses mots significatifs sont presents dans l'autre. Sert a virer les
+// versions bilingues qui repetent la meme info de facon plus pauvre.
+function nameTokens(s) {
+  return new Set(
+    (s || '')
+      .toLowerCase()
+      .normalize('NFKD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length > 2)
+      .map((w) => w.replace(/s$/, '')) // plurals -> singular for matching
+  );
+}
+function isStrictSubset(small, big) {
+  const a = nameTokens(small.name);
+  const b = nameTokens(big.name);
+  if (a.size === 0 || a.size >= b.size) return false;
+  for (const w of a) if (!b.has(w)) return false;
+  return true;
 }
 function isSocialAct(a) {
   return /\b(social|baile|party)\b/i.test(a?.name || '');
@@ -100,14 +129,14 @@ function mergeActivities(a = [], b = []) {
   const all = [...(a || []), ...(b || [])];
   const out = [];
   const seenSocialStarts = new Map();
-  const seenWorkshops = new Map();    // cle exacte time|name → idx
-  const seenSemantic = new Map();     // cle time|style|level → idx (dedup FR/EN)
+  const seenWorkshops = new Map();
+  const seenSemantic = new Map();
 
   for (const act of all) {
     if (isSocialAct(act)) {
-      const start = timeStart(act.time);
-      if (start != null && seenSocialStarts.has(start)) {
-        const idx = seenSocialStarts.get(start);
+      const startNorm = normTime(act.time);
+      if (seenSocialStarts.has(startNorm)) {
+        const idx = seenSocialStarts.get(startNorm);
         const prev = out[idx];
         const time = (act.time || '').length > (prev.time || '').length ? act.time : prev.time;
         const name = (act.name || '').length > (prev.name || '').length ? act.name : prev.name;
@@ -115,15 +144,13 @@ function mergeActivities(a = [], b = []) {
         continue;
       }
       out.push(act);
-      if (start != null) seenSocialStarts.set(start, out.length - 1);
+      seenSocialStarts.set(startNorm, out.length - 1);
       continue;
     }
-    // Workshop : dedup exact + dedup semantique.
     const exactKey = `${normTime(act.time)}|${(act.name || '').toLowerCase().trim().replace(/\s+/g, ' ')}`;
     if (seenWorkshops.has(exactKey)) continue;
     const semKey = styleLevelKey(act);
     if (semKey && seenSemantic.has(semKey)) {
-      // Garde le nom le plus long (souvent plus informatif).
       const idx = seenSemantic.get(semKey);
       if ((act.name || '').length > (out[idx].name || '').length) {
         out[idx] = act;
@@ -134,7 +161,22 @@ function mergeActivities(a = [], b = []) {
     seenWorkshops.set(exactKey, out.length - 1);
     if (semKey) seenSemantic.set(semKey, out.length - 1);
   }
-  return out;
+
+  // Pass finale : drop les activites dominees (sous-ensemble strict d'une autre
+  // a la meme heure normalisee). Ex "5:30pm Clase" est subset de "17:30 Clase de Tango".
+  const byTime = new Map();
+  for (const a of out) {
+    const k = normTime(a.time);
+    if (!byTime.has(k)) byTime.set(k, []);
+    byTime.get(k).push(a);
+  }
+  const cleaned = [];
+  for (const a of out) {
+    const peers = byTime.get(normTime(a.time)) || [];
+    const dominated = peers.some((b) => b !== a && isStrictSubset(a, b));
+    if (!dominated) cleaned.push(a);
+  }
+  return cleaned;
 }
 
 function mergeEvent(prev, incoming, meta) {
