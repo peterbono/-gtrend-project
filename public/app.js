@@ -123,7 +123,8 @@ function styleGradient(styles) {
 function isSocial(a) { return SOCIAL_RE.test(a?.name || ''); }
 
 // Filler words a stripper du nom de l'activite : ne sont ni profs ni info utile.
-const FILLER_RE = /\b(clase\s*de|class\s*of|cours\s*de|lesson|workshop|taller|de|of|du|le|la)\b/gi;
+// Inclut les phrases de notice "2 classes at the same time", "al mismo tiempo".
+const FILLER_RE = /\b(clase\s*de|clases\s*de|class\s*of|classes\s*at\s*the\s*same\s*time|at\s*the\s*same\s*time|al\s*mismo\s*tiempo|cours\s*de|lesson|workshop|taller|de|of|du|le|la|the|y|and)\b/gi;
 
 function decomposeWorkshop(name) {
   const styleMatch = (name || '').match(STYLE_RE);
@@ -144,12 +145,18 @@ function decomposeWorkshop(name) {
     .replace(LEVEL_RE_G, '')
     .replace(SUBSTYLE_RE, '')
     .replace(FILLER_RE, '')
-    .replace(/[()[\]]/g, '')         // strip parens
-    .replace(/\s+[ye]\s+/gi, ' ')    // strip conjunctions orphelines "e" / "y"
+    .replace(/[()[\]]/g, '')           // strip parens
+    .replace(/\s+[ye]\s+/gi, ' ')      // strip conjonctions orphelines "e" / "y"
+    .replace(/&/g, ' ')                // strip residual "&"
+    .replace(/[\/\\|]+/g, ' ')         // strip slashes
+    .replace(/\d+\s*(classes|clases)/gi, '') // strip "2 classes" residuals
     .replace(/\s+/g, ' ')
     .trim();
-  who = who.replace(/&/g, '·').replace(/^[·,;:\-–\s]+|[·,;:\-–\s]+$/g, '').trim();
-  if (who.length < 2) who = '';
+  // Strip leading/trailing punctuation (inclut em dash U+2014 et toute ponctuation residuelle).
+  who = who.replace(/^[\s·,;:\-–—\/\\|*]+|[\s·,;:\-–—\/\\|*]+$/g, '').trim();
+  // Si reste essentiellement de la ponctuation (< 2 lettres significatives), drop.
+  const alphaCount = (who.match(/[a-zA-ZÀ-ſ]/g) || []).length;
+  if (alphaCount < 2) who = '';
   if (who && who === who.toUpperCase()) {
     who = who.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
   }
