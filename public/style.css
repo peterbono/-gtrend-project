@@ -326,20 +326,19 @@ main {
   color: rgba(255,255,255,0.96);
 }
 .sched-list .info {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 10px;
+  display: block;
   min-width: 0;
+  line-height: 1.35;
+  text-align: left;
 }
 .sched-list .n {
+  display: inline;
   font-size: 0.88rem;
   color: rgba(255,255,255,0.95);
-  line-height: 1.3;
-  word-break: normal;
-  overflow-wrap: break-word;
 }
 .sched-list .meta {
+  display: inline;
+  margin-left: 8px;
   font-size: 0.66rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
