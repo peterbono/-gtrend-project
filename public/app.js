@@ -87,9 +87,6 @@ function dateOfWeekday(dayIndex) {
 
 function detectStyles(activities, title = '', venue = '') {
   const found = new Set();
-  // On considere TOUS les textes pertinents : activites + titre + venue.
-  // Permet par ex de capter "Brazilian ZOUK" mentionne dans le titre quand
-  // les activites parlent juste de "Level 2 Variations".
   const texts = [
     ...(activities || []).map((a) => a.name || ''),
     title || '',
@@ -100,7 +97,10 @@ function detectStyles(activities, title = '', venue = '') {
     const re = new RegExp(STYLE_RE.source, 'gi');
     while ((m = re.exec(t)) !== null) {
       const key = m[1].toLowerCase().replace(/[\s-]/g, '');
-      if (STYLE_HUE[key]) found.add(key);
+      // !== undefined : tango est mappe a hue 0 (rouge), 0 est falsy en JS
+      // donc un simple truthy check sautait le tango. Bug visible : tag
+      // 'Clase De' au lieu de 'Tango', gradient bleu nuit au lieu de burgundy.
+      if (STYLE_HUE[key] !== undefined) found.add(key);
     }
   }
   return [...found];
