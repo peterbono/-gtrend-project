@@ -69,9 +69,24 @@ function normTime(t) {
   return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
 }
 
-// "Salsa Class Beginner" est un sous-ensemble de "Clase de Salsa Beginner Intermediate"
-// si tous ses mots significatifs sont presents dans l'autre. Sert a virer les
-// versions bilingues qui repetent la meme info de facon plus pauvre.
+// Stop-words : on les ignore pour comparer 2 activites (ils n'apportent pas
+// d'info distinguante : tout le monde a une "class").
+const TOKEN_STOP = new Set([
+  'class', 'classes', 'clase', 'clases', 'lesson', 'lessons', 'workshop',
+  'workshops', 'taller', 'talleres', 'cours', 'session', 'sessions', 'time',
+  'same', 'with', 'and', 'con',
+]);
+
+// Synonymes cross-langue : "principiante" et "beginner" doivent compter
+// comme le meme token pour dedup les versions ES/EN d'une activite.
+const TOKEN_SYN = {
+  principiante: 'beg', principiantes: 'beg', beginner: 'beg', beginners: 'beg', beg: 'beg',
+  intermedio: 'int', intermedios: 'int', intermediate: 'int', int: 'int',
+  avanzado: 'adv', avanzados: 'adv', advanced: 'adv', adv: 'adv',
+  baile: 'social', social: 'social', party: 'social',
+  practica: 'practice', practicar: 'practice', practice: 'practice',
+};
+
 function nameTokens(s) {
   return new Set(
     (s || '')
@@ -80,14 +95,14 @@ function nameTokens(s) {
       .replace(/[̀-ͯ]/g, '')
       .replace(/[^\p{L}\p{N}\s]/gu, ' ')
       .split(/\s+/)
-      .filter((w) => w.length > 2)
-      .map((w) => w.replace(/s$/, '')) // plurals -> singular for matching
+      .filter((w) => w.length > 2 && !TOKEN_STOP.has(w))
+      .map((w) => TOKEN_SYN[w] || w.replace(/s$/, ''))
   );
 }
-function isStrictSubset(small, big) {
+function isSubsetOrEqual(small, big) {
   const a = nameTokens(small.name);
   const b = nameTokens(big.name);
-  if (a.size === 0 || a.size >= b.size) return false;
+  if (a.size === 0) return false;
   for (const w of a) if (!b.has(w)) return false;
   return true;
 }
@@ -162,19 +177,31 @@ function mergeActivities(a = [], b = []) {
     if (semKey) seenSemantic.set(semKey, out.length - 1);
   }
 
-  // Pass finale : drop les activites dominees (sous-ensemble strict d'une autre
-  // a la meme heure normalisee). Ex "5:30pm Clase" est subset de "17:30 Clase de Tango".
-  const byTime = new Map();
-  for (const a of out) {
-    const k = normTime(a.time);
-    if (!byTime.has(k)) byTime.set(k, []);
-    byTime.get(k).push(a);
-  }
+  // Pass finale : dedup par chevauchement de tokens semantiques a la meme heure.
+  // - Si une activite a un set de tokens egal ou subset d'une autre -> on garde
+  //   la plus informative (= la plus longue).
+  // - Tokens normalises (synonymes ES/EN, stop-words ignores) : "Clases de Salsa
+  //   Principiante e Intermedio" et "Salsa Class Beginner & Intermediate"
+  //   fusionnent en une seule entree.
   const cleaned = [];
   for (const a of out) {
-    const peers = byTime.get(normTime(a.time)) || [];
-    const dominated = peers.some((b) => b !== a && isStrictSubset(a, b));
-    if (!dominated) cleaned.push(a);
+    const tA = normTime(a.time);
+    let drop = false;
+    for (let i = 0; i < cleaned.length; i++) {
+      const c = cleaned[i];
+      if (normTime(c.time) !== tA) continue;
+      const aSubC = isSubsetOrEqual(a, c);
+      const cSubA = isSubsetOrEqual(c, a);
+      if (aSubC && cSubA) {
+        // sets equivalents -> garde le name le plus long.
+        if ((a.name || '').length > (c.name || '').length) cleaned[i] = a;
+        drop = true;
+        break;
+      }
+      if (aSubC) { drop = true; break; }                // a domine -> drop a
+      if (cSubA) { cleaned[i] = a; drop = true; break; } // c domine -> a remplace c
+    }
+    if (!drop) cleaned.push(a);
   }
   return cleaned;
 }
