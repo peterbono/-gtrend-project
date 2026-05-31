@@ -258,9 +258,12 @@ export async function upsertMany(events, meta = {}) {
         lastSeen: now,
       };
     } else {
+      // Pas de prev mais on dedupe quand meme les activites entre elles
+      // (le parser peut en produire 2 versions ES/EN d'un meme creneau).
       map[candidateId] = {
         id: candidateId,
         ...ev,
+        activities: mergeActivities(ev.activities, []),
         source: meta.source || 'text',
         firstSeen: now,
         lastSeen: now,
