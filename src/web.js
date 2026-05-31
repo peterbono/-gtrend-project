@@ -23,11 +23,12 @@ export function createApp() {
   });
 
   app.get('/api/events', async (req, res) => {
+    const nonEmpty = (e) => e.activities && e.activities.length > 0;
     if (req.query.day !== undefined) {
       const idx = Number(req.query.day);
-      return res.json({ dayIndex: idx, dayLabel: DAY_LABEL_FR[idx], events: await eventsForDay(idx) });
+      return res.json({ dayIndex: idx, dayLabel: DAY_LABEL_FR[idx], events: (await eventsForDay(idx)).filter(nonEmpty) });
     }
-    res.json({ days: DAY_LABEL_FR, events: await allEvents() });
+    res.json({ days: DAY_LABEL_FR, events: (await allEvents()).filter(nonEmpty) });
   });
 
   app.get('/api/map', async (req, res) => res.json(await buildMapPayload()));
