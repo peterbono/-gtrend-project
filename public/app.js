@@ -281,7 +281,7 @@ function renderCard(ev) {
   const title = titleFor(ev);
   const venue = cleanVenueShort(ev.venue);
   const venueHTML = venue
-    ? `<div class="card-loc"><span aria-hidden="true">↗</span> ${ev.mapUrl ? `<a href="${escapeHTML(ev.mapUrl)}" target="_blank" rel="noopener">${escapeHTML(venue)}</a>` : escapeHTML(venue)}</div>`
+    ? `<div class="card-loc"><span class="arrow" aria-hidden="true">↗</span><span class="vlabel">${ev.mapUrl ? `<a href="${escapeHTML(ev.mapUrl)}" target="_blank" rel="noopener">${escapeHTML(venue)}</a>` : escapeHTML(venue)}</span></div>`
     : '';
 
   const acts = (ev.activities || []).slice().sort((a, b) => timeKey(a.time) - timeKey(b.time));

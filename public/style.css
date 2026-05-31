@@ -285,6 +285,7 @@ main {
 .card-loc {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 6px;
   font-size: 0.85rem;
   color: rgba(255,255,255,0.92);
@@ -292,19 +293,23 @@ main {
   max-width: 100%;
   min-width: 0;
 }
-.card-loc > a,
-.card-loc > span:not(.arrow) {
+.card-loc .arrow {
+  opacity: 0.7;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+.card-loc .vlabel {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  text-align: left;
 }
 .card-loc a {
   color: inherit;
   text-decoration: none;
 }
-.card-loc .arrow { opacity: 0.7; font-weight: 700; flex-shrink: 0; }
 
 /* ── SCHEDULE (workshops + social) ─────────────────────── */
 .schedule { display: flex; flex-direction: column; gap: 14px; }
