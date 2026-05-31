@@ -311,9 +311,9 @@ main {
 .sched-list { list-style: none; display: flex; flex-direction: column; }
 .sched-list li {
   display: grid;
-  grid-template-columns: 56px 1fr auto;
+  grid-template-columns: 56px minmax(0, 1fr);
   align-items: baseline;
-  gap: 10px;
+  gap: 12px;
   padding: 9px 0;
   border-top: 1px solid rgba(255,255,255,0.08);
   min-height: 32px;
@@ -325,21 +325,27 @@ main {
   font-size: 0.88rem;
   color: rgba(255,255,255,0.96);
 }
+.sched-list .info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-width: 0;
+}
 .sched-list .n {
   font-size: 0.88rem;
-  color: rgba(255,255,255,0.92);
+  color: rgba(255,255,255,0.95);
   line-height: 1.3;
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 .sched-list .meta {
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.65);
-  font-weight: 600;
-  text-align: right;
-  max-width: 50%;
-  line-height: 1.3;
-  word-break: break-word;
+  color: rgba(255,255,255,0.62);
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .social-box {

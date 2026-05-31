@@ -11,8 +11,15 @@ const monPos = (jsWeekday) => (jsWeekday + 6) % 7;
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-const STYLE_HUE = { salsa: 35, bachata: 340, kizomba: 280, zouk: 175, merengue: 50, tango: 20 };
+const STYLE_HUE = { salsa: 35, bachata: 340, kizomba: 280, zouk: 175, merengue: 50, tango: 0 };
 const STYLE_LABEL = { salsa: 'Salsa', bachata: 'Bachata', kizomba: 'Kizomba', zouk: 'Zouk', merengue: 'Merengue', tango: 'Tango' };
+
+// Overrides : certains styles meritent une signature visuelle distincte de la formule
+// "hue + sat/light standards". Le tango = vibe burgundy/wine, plus dark/sophistique
+// que les oranges salsa/bachata, mais reste dans la famille warm de l'app.
+const STYLE_GRADIENT_OVERRIDE = {
+  tango: 'linear-gradient(135deg, hsl(348 60% 35%) 0%, hsl(355 55% 22%) 55%, hsl(8 45% 10%) 100%)',
+};
 
 const STYLE_RE = /\b(salsa|bachata|kizomba|zouk|merengue|tango|cha[\s-]?cha)\b/i;
 const LEVEL_RE = /\b(beginner|intermediate|advanced|principiantes?|intermedios?|avanzados?|beg|int|adv|all\s*levels?)\b/i;
@@ -102,6 +109,7 @@ function detectStyles(activities, title = '', venue = '') {
 function styleGradient(styles) {
   if (!styles.length) return 'linear-gradient(135deg, hsl(220 22% 28%), hsl(220 22% 14%))';
   if (styles.length === 1) {
+    if (STYLE_GRADIENT_OVERRIDE[styles[0]]) return STYLE_GRADIENT_OVERRIDE[styles[0]];
     const h = STYLE_HUE[styles[0]];
     return `linear-gradient(135deg, hsl(${h} 78% 55%) 0%, hsl(${h} 75% 38%) 55%, hsl(${h} 50% 18%) 100%)`;
   }
@@ -279,9 +287,11 @@ function renderCard(ev) {
   // pas 2 classes paralleles.
   const workshopRows = workshops.map((a) => {
     const d = decomposeWorkshop(a.name);
-    // Abrege les niveaux en multi : "Beginner & Intermediate" -> "Beg / Int"
-    const lvls = d.levels.map((l) => l.replace(/^Beginner$/, 'Beg').replace(/^Intermediate$/, 'Int').replace(/^Advanced$/, 'Adv'));
-    const levelLabel = lvls.length === 1 ? d.levels[0] : lvls.join(' / ');
+    // Abrege systematiquement les niveaux : "Beginner" -> "Beg" etc. + sans espace autour du "/".
+    const lvls = d.levels.map((l) =>
+      l.replace(/^Beginner$/, 'Beg').replace(/^Intermediate$/, 'Int').replace(/^Advanced$/, 'Adv').replace(/intermediate\/advanced/i, 'Int/Adv')
+    );
+    const levelLabel = lvls.length ? lvls.join('/') : '';
     const { left, meta } = makeWorkshopRow(d, levelLabel, a.name);
     return { time: a.time, left, meta };
   });
@@ -293,8 +303,9 @@ function renderCard(ev) {
           .map(
             (r) => `<li>
             <span class="t">${escapeHTML(fmtTime(r.time))}</span>
-            <span class="n" dir="auto">${escapeHTML(r.left)}</span>
-            <span class="meta">${escapeHTML(r.meta)}</span>
+            <span class="info">
+              <span class="n" dir="auto">${escapeHTML(r.left)}</span>${r.meta ? `<span class="meta">${escapeHTML(r.meta)}</span>` : ''}
+            </span>
           </li>`
           )
           .join('')}</ul>
