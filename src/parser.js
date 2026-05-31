@@ -28,9 +28,9 @@ function stripFillerPrefix(s) {
     .trim();
 }
 
-// Detecte une heure ou plage horaire en debut de ligne.
-// Ex: "6p", "9-10p", "9p-1a", "7pm", "7-11p", "21:00".
-const TIME_RE = /^(\d{1,2}(?::\d{2})?\s*(?:[apAP]m?)?(?:\s*[-–a]\s*\d{1,2}(?::\d{2})?\s*(?:[apAP]m?)?)?)\b/;
+// Detecte une heure ou plage horaire en debut de ligne (case insensitive sur am/pm).
+// Ex: "6p", "9-10p", "9p-1a", "7pm", "7-11p", "21:00", "5:00 PM – 7:30 PM".
+const TIME_RE = /^(\d{1,2}(?::\d{2})?\s*(?:[ap]m?)?(?:\s*[-–a]\s*\d{1,2}(?::\d{2})?\s*(?:[ap]m?)?)?)\b/i;
 
 function parseTime(line) {
   const clean = stripLead(line);
