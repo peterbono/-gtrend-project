@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normTime, mergeActivities, isFreshEvent } from '../src/store.js';
+import { normTime, mergeActivities, isFreshEvent, isInScope } from '../src/store.js';
 
 // ── normTime : meridiem colle, plages, points ────────────────────────────────
 
@@ -87,4 +87,35 @@ test('isFreshEvent: defensif si lastSeen absent ou illisible -> garde', () => {
   assert.equal(isFreshEvent({}), true);
   assert.equal(isFreshEvent({ lastSeen: null }), true);
   assert.equal(isFreshEvent({ lastSeen: 'pas-une-date' }), true);
+});
+
+// ── isInScope : filtre de zone Playa del Carmen (conservateur) ───────────────
+// Le bug prod : "Rooftop Bar Tulum Centro" (un event a Tulum) etait geocode
+// DANS Playa par Nominatim/LLM bornes a la zone. On droppe au niveau du store,
+// mais uniquement sur des references EXPLICITES a une autre ville.
+
+test('isInScope: "Rooftop Bar Tulum Centro" -> drop (autre ville explicite)', () => {
+  assert.equal(isInScope({ venue: 'Rooftop Bar Tulum Centro', title: 'Salsa Social' }), false);
+});
+
+test('isInScope: "La Fonda de la Tulum" -> garde (resto de Playa, tulum nu)', () => {
+  assert.equal(isInScope({ venue: 'La Fonda de la Tulum', title: 'Bachata Night' }), true);
+});
+
+test('isInScope: "Carretera Cancún-Tulum km 296" -> garde (adresse de Playa)', () => {
+  assert.equal(isInScope({ venue: 'Carretera Cancún-Tulum km 296', title: 'Kizomba' }), true);
+});
+
+test('isInScope: autres villes explicites -> drop (venue ou title)', () => {
+  assert.equal(isInScope({ venue: 'Mandala Cancún', title: 'Salsa' }), false);
+  assert.equal(isInScope({ venue: 'Beach Club', title: 'Social en Tulum este sabado' }), false);
+  assert.equal(isInScope({ venue: 'Zocalo, Tulum, Q. Roo', title: 'Salsa' }), false);
+  assert.equal(isInScope({ venue: 'Rooftop Puerto Aventuras', title: 'Bachata' }), false);
+  assert.equal(isInScope({ venue: 'Centro, Mérida', title: 'Salsa' }), false);
+});
+
+test('isInScope: defensif sur event vide ou sans venue/title', () => {
+  assert.equal(isInScope({}), true);
+  assert.equal(isInScope({ venue: null, title: null }), true);
+  assert.equal(isInScope(undefined), true);
 });

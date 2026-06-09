@@ -306,10 +306,49 @@ export function isFreshEvent(ev, now = Date.now()) {
   return now - seen <= MAX_EVENT_AGE_DAYS * 24 * 60 * 60 * 1000;
 }
 
+// Filtre de zone : l'app couvre Playa del Carmen uniquement, mais le groupe
+// WhatsApp relaie parfois des events d'autres villes (Tulum, Cancun...).
+// VOLONTAIREMENT CONSERVATEUR : on ne droppe que les references EXPLICITES a
+// une autre ville. Un match nu sur /tulum/ ou /cancun/ serait faux :
+// - les adresses de Playa contiennent "Carretera Cancun-Tulum km ..." ;
+// - un resto de Playa s'appelle "La Fonda de la Tulum".
+// Dans le doute, on GARDE l'event (pire cas : un point en trop sur la carte,
+// que le bounding-box de api/map.js attrapera s'il est geocode hors zone).
+const OTHER_CITY_RES = [
+  /\btulum\s+centro\b/,
+  /\bdowntown\s+tulum\b/,
+  /\btulum\s+downtown\b/,
+  /\ben\s+tulum\b/,
+  /\btulum\s*,\s*q/, // "Tulum, Q. Roo" / "Tulum, Quintana Roo"
+  /\bcancun\b(?!\s*[-–]\s*tulum)/, // mais pas l'axe routier "Cancun-Tulum"
+  /\bcozumel\b/,
+  /\bakumal\b/,
+  /\bpuerto\s+aventuras\b/,
+  /\bpuerto\s+morelos\b/,
+  /\bholbox\b/,
+  /\bbacalar\b/,
+  /\bmerida\b/,
+  /\bvalladolid\b/,
+];
+function mentionsOtherCity(s) {
+  if (!s) return false;
+  const t = String(s)
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '') // cancún -> cancun, mérida -> merida
+    // Les segments "Carretera ..." sont des adresses de Playa (Carretera
+    // Cancun-Tulum, Carretera a Cancun...) : on les neutralise avant le test.
+    .replace(/\bcarretera[^,;]*/g, ' ');
+  return OTHER_CITY_RES.some((re) => re.test(t));
+}
+export function isInScope(ev) {
+  return !mentionsOtherCity(ev?.venue) && !mentionsOtherCity(ev?.title);
+}
+
 export async function allEvents() {
   const map = await readMap();
   return Object.values(map)
-    .filter((ev) => isFreshEvent(ev))
+    .filter((ev) => isFreshEvent(ev) && isInScope(ev))
     .sort((a, b) => a.dayIndex - b.dayIndex);
 }
 

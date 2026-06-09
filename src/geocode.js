@@ -30,10 +30,29 @@ async function setCache(key, value, ttl) {
   try { await (await redis()).set(key, value, { ex: ttl }); } catch { /* ignore */ }
 }
 
+// Prefixes "filler" frequents dans les annonces WhatsApp ("Nos vemos en X",
+// "¿Donde? X", "Lugar: X") : du bruit a retirer avant tout lookup ou geocodage.
+// NB : "donde" seul exige le "?" pour ne pas amputer un nom de resto type "Donde Tito".
+const FILLER_PREFIXES = [
+  /^\s*(?:¿\s*d[oó]nde\s*\??|d[oó]nde\s*\?)\s*:?\s*/i,
+  /^\s*nos\s+vemos\s+en\s+/i,
+  /^\s*(?:lugar|ubicaci[oó]n|direcci[oó]n|venue|spot|where)\s*:\s*/i,
+];
+export function stripFiller(name) {
+  let s = String(name || '').trim();
+  let prev;
+  do {
+    prev = s;
+    for (const re of FILLER_PREFIXES) s = s.replace(re, '');
+    s = s.trim();
+  } while (s && s !== prev);
+  return s || String(name || '').trim();
+}
+
 // Variations de query a tenter, du plus precis au plus large.
 function queryVariants(name) {
   const out = [];
-  const base = name.trim();
+  const base = stripFiller(name.trim());
   out.push(`${base}, Playa del Carmen, Quintana Roo, Mexico`);
   // Sans le ", AVENIDA ..." suffix qui peut perturber
   const noStreet = base.replace(/,\s*avenida.*$/i, '').trim();
@@ -59,22 +78,44 @@ async function nominatim(q) {
 
 // Beaucoup de venues de Playa ne sont pas dans OSM. Si on a un shortlink Google Maps
 // (maps.app.goo.gl), on le suit pour extraire les coords du long URL.
+// Extraction pure des coords depuis un URL ou un body Google Maps.
+// Les pages embarquent souvent les params en percent-encoding (%21 = "!"),
+// on decode avant de matcher.
+export function coordsFromText(src) {
+  if (!src) return null;
+  const s = String(src).replace(/%21/gi, '!').replace(/%2C/gi, ',');
+  // .../@20.6308,-87.0721,17z/...
+  const m1 = s.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (m1) return { lat: parseFloat(m1[1]), lon: parseFloat(m1[2]) };
+  // !3d20.6308!4d-87.0721 (format "place" : lat puis lon)
+  const m2 = s.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+  if (m2) return { lat: parseFloat(m2[1]), lon: parseFloat(m2[2]) };
+  // !2d-87.0721!3d20.6308 (format "embed/dir" : LON puis LAT, ordre inverse)
+  const m3 = s.match(/!2d(-?\d+\.\d+)!3d(-?\d+\.\d+)/);
+  if (m3) return { lat: parseFloat(m3[2]), lon: parseFloat(m3[1]) };
+  return null;
+}
+
 async function coordsFromMapUrl(url) {
-  if (!url || !/maps\.app\.goo\.gl|google\.com\/maps/.test(url)) return null;
+  if (!url || !/maps\.app\.goo\.gl|goo\.gl\/maps|google\.[a-z.]+\/maps/.test(url)) return null;
   try {
     const r = await fetch(url, { redirect: 'follow', headers: { 'User-Agent': UA } });
     const text = await r.text();
-    const candidates = [r.url, text];
-    for (const src of candidates) {
-      // .../@20.6308,-87.0721,17z/...
-      const m1 = src.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-      if (m1) return { lat: parseFloat(m1[1]), lon: parseFloat(m1[2]) };
-      // !3d20.6308!4d-87.0721
-      const m2 = src.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
-      if (m2) return { lat: parseFloat(m2[1]), lon: parseFloat(m2[2]) };
+    for (const src of [r.url, text]) {
+      const coords = coordsFromText(src);
+      if (coords) return coords;
     }
   } catch { /* ignore */ }
   return null;
+}
+
+// Certains messages stockent le lien Google Maps comme NOM de venue
+// ("maps.app.goo.gl/xyz", avec ou sans protocole). On le detecte pour
+// l'unfurler au lieu d'envoyer un URL en query Nominatim (toujours un miss).
+export function mapUrlFromName(name) {
+  const m = String(name || '').match(/(?:https?:\/\/)?(?:maps\.app\.goo\.gl|goo\.gl\/maps|(?:www\.)?google\.[a-z.]+\/maps)\/\S+/i);
+  if (!m) return null;
+  return /^https?:\/\//i.test(m[0]) ? m[0] : `https://${m[0]}`;
 }
 
 // Overrides manuels : venues recherchees a la main (adresses confirmees) pour les
@@ -87,9 +128,30 @@ const KNOWN = {
   // STEP DANCE : Av 45 Sur y Calle 1 Bis Sur (zone sud)
   'step dance': { lat: 20.6240, lon: -87.0834 },
 };
-function lookupKnown(name) {
-  const k = name.toLowerCase().split(',')[0].replace(/^\s*(the|la|el|le)\s+/, '').trim();
-  return KNOWN[k] || null;
+// Matching flou : les venues stockees arrivent avec du bruit ("the WAREHOUSE
+// Av. 5 y C. 10", "STEP DANCE STUDIO PLAYA DEL CARMEN", "Nos vemos en Mexcalli").
+// L'egalite stricte du 1er segment ratait tout ca. On normalise (minuscules,
+// accents, filler, articles, ponctuation) puis on cherche la cle KNOWN comme
+// mot entier (word-boundary) n'importe ou dans le nom, pour eviter les faux
+// positifs type "warehouses".
+function normalizeForKnown(name) {
+  return stripFiller(String(name || ''))
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/^\s*(the|la|el|le|los|las)\s+/, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+export function lookupKnown(name) {
+  const norm = normalizeForKnown(name);
+  if (!norm) return null;
+  for (const [k, coords] of Object.entries(KNOWN)) {
+    const re = new RegExp(`(?:^|\\s)${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\s|$)`);
+    if (re.test(norm)) return coords;
+  }
+  return null;
 }
 
 // Fallback Gemini : on demande au LLM les coords GPS du lieu, avec sanity check
@@ -141,19 +203,37 @@ export const geocodeManyViaGemini = geocodeManyViaLLM;
 
 export async function geocodeVenue(name, mapUrl = null) {
   if (!name || typeof name !== 'string') return null;
-  const key = cacheKey(name);
-  const cached = await getCache(key);
-  if (cached) return cached.found ? cached : null;
 
-  // 1) Override venues connues (instantane).
+  // 1) Override venues connues : AVANT le cache, sinon un miss ({found:false})
+  //    cache 24h masque toute amelioration du matching KNOWN. Lookup instantane,
+  //    pas besoin de le cacher.
   const known = lookupKnown(name);
   if (known) {
-    const coords = { ...known, source: 'known', found: true };
-    await setCache(key, coords, CACHE_TTL_HIT);
-    return coords;
+    return { ...known, source: 'known', found: true };
   }
 
-  // 2) Si on a un shortlink Google Maps, on l'unfurl.
+  const key = cacheKey(name);
+  const cached = await getCache(key);
+
+  // 2) Le "nom" est lui-meme un lien Google Maps : on l'unfurl directement.
+  //    On ignore un eventuel miss cache (l'unfurl peut reussir la ou Nominatim
+  //    avait echoue avec l'URL en query), mais on reutilise un hit cache.
+  const urlInName = mapUrlFromName(name);
+  if (urlInName) {
+    if (cached?.found) return cached;
+    const fromUrl = await coordsFromMapUrl(urlInName);
+    if (fromUrl) {
+      const coords = { ...fromUrl, source: 'mapurl', found: true };
+      await setCache(key, coords, CACHE_TTL_HIT);
+      return coords;
+    }
+    await setCache(key, { found: false }, CACHE_TTL_MISS);
+    return null;
+  }
+
+  if (cached) return cached.found ? cached : null;
+
+  // 3) Si on a un shortlink Google Maps, on l'unfurl.
   if (mapUrl) {
     const fromUrl = await coordsFromMapUrl(mapUrl);
     if (fromUrl) {
@@ -163,7 +243,7 @@ export async function geocodeVenue(name, mapUrl = null) {
     }
   }
 
-  // 3) Nominatim avec variants.
+  // 4) Nominatim avec variants (filler deja retire par queryVariants).
   for (const q of queryVariants(name)) {
     const hit = await nominatim(q);
     if (hit) {
@@ -180,8 +260,8 @@ export async function geocodeVenue(name, mapUrl = null) {
     await new Promise((r) => setTimeout(r, 1100));
   }
 
-  // 4) Dernier recours : LLM (Gemini, fallback Groq).
-  const llm = await geocodeViaLLM(name);
+  // 5) Dernier recours : LLM (Gemini, fallback Groq).
+  const llm = await geocodeViaLLM(stripFiller(name));
   if (llm) {
     await setCache(key, llm, CACHE_TTL_HIT);
     return llm;

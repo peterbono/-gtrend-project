@@ -695,7 +695,8 @@ main {
   opacity: 0.85;
 }
 
-/* ── MAP VIEW ──────────────────────────────────────────── */
+/* ── MAP VIEW (plein ecran facon Google Maps) ──────────── */
+/* La carte est le fond : header, CTA filtres, legende et tabbar flottent. */
 .map-view { padding: 0; margin: 0 -20px; }
 .map {
   height: calc(100dvh - 280px);
@@ -709,6 +710,59 @@ main {
   font-size: 0.8rem;
   color: var(--text-2);
 }
+body.map-mode { padding-bottom: 0; }
+body.map-mode main { max-width: none; padding: 0; }
+body.map-mode .map-view {
+  position: fixed;
+  inset: 0;
+  margin: 0;
+  z-index: 5;
+}
+body.map-mode .map {
+  height: 100dvh;
+  min-height: 0;
+}
+/* Le header sticky (z-index 10) flotte au-dessus de la carte, son gradient
+   vers transparent fait office de scrim. */
+body.map-mode .top {
+  background: linear-gradient(to bottom, var(--bg) 55%, rgba(7, 8, 12, 0.55) 80%, transparent);
+}
+/* CTA filtres flottant sous le header, a droite. */
+body.map-mode .filter-row {
+  position: fixed;
+  top: calc(max(18px, var(--safe-top)) + 104px);
+  right: 16px;
+  z-index: 6;
+  padding: 0;
+}
+body.map-mode .filter-cta {
+  background: rgba(15, 17, 24, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+}
+/* Legende en pill flottante au-dessus de la tabbar. */
+body.map-mode .map-legend {
+  position: absolute;
+  left: 50%;
+  bottom: calc(86px + var(--safe-bottom));
+  transform: translateX(-50%);
+  padding: 9px 16px;
+  background: rgba(15, 17, 24, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  z-index: 6;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+}
+/* Controles leaflet : au-dessus de la legende/tabbar. */
+body.map-mode .leaflet-bottom.leaflet-right { margin-bottom: calc(140px + var(--safe-bottom)); }
+body.map-mode .leaflet-bottom.leaflet-left { margin-bottom: calc(86px + var(--safe-bottom)); }
 .leaflet-container { background: #1a1c25; }
 .leaflet-tile { filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.95) saturate(0.75); }
 .leaflet-control-attribution { filter: invert(1) hue-rotate(180deg); font-size: 0.65rem; }
