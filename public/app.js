@@ -51,6 +51,15 @@ let filterMode = 'all';
 try {
   if (localStorage.getItem('filterMode') === 'parties') filterMode = 'parties';
 } catch { /* ignore */ }
+
+// Filtre styles (multi-selection, vide = tous). Matching inclusif : un event
+// mixte (ex SBK) s'affiche des qu'UN de ses styles est selectionne.
+const STYLE_ORDER = ['salsa', 'bachata', 'kizomba', 'zouk', 'merengue', 'tango', 'cumbia'];
+let styleFilter = new Set();
+try {
+  const saved = JSON.parse(localStorage.getItem('styleFilter') || '[]');
+  if (Array.isArray(saved)) styleFilter = new Set(saved.filter((s) => STYLE_HUE[s] !== undefined));
+} catch { /* ignore */ }
 let cache = null;
 let cachedEtag = null;
 let calCursor = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -69,6 +78,7 @@ try {
 
 const $caption = document.getElementById('today-caption');
 const $filter = document.getElementById('filter-toggle');
+const $styleChips = document.getElementById('style-chips');
 const $strip = document.getElementById('day-strip');
 const $cards = document.getElementById('cards');
 const $cal = document.getElementById('calendar');
@@ -119,8 +129,14 @@ function detectStyles(activities, title = '', venue = '') {
       // 'Clase De' au lieu de 'Tango', gradient bleu nuit au lieu de burgundy.
       if (STYLE_HUE[key] !== undefined) found.add(key);
     }
+    // "SBK" = soiree mixte salsa/bachata/kizomba.
+    if (/\bsbk\b/i.test(t)) { found.add('salsa'); found.add('bachata'); found.add('kizomba'); }
   }
   return [...found];
+}
+
+function eventStyles(ev) {
+  return detectStyles(ev.activities, ev.title, ev.venue);
 }
 
 function styleGradient(styles) {
@@ -147,10 +163,12 @@ function isSocial(a) {
 
 function eventHasSocial(ev) { return (ev.activities || []).some(isSocial); }
 
-// Events visibles selon le toggle Soirees/Tout.
+// Events visibles selon le toggle Soirees/Tout + le filtre styles (cumulatifs).
 function visibleEvents() {
-  const evs = cache || [];
-  return filterMode === 'parties' ? evs.filter(eventHasSocial) : evs;
+  let evs = cache || [];
+  if (filterMode === 'parties') evs = evs.filter(eventHasSocial);
+  if (styleFilter.size) evs = evs.filter((e) => eventStyles(e).some((s) => styleFilter.has(s)));
+  return evs;
 }
 
 // Filler words a stripper du nom de l'activite : ne sont ni profs ni info utile.
@@ -325,7 +343,7 @@ function renderDayStrip() {
 function renderCard(ev) {
   // Titre et venue participent a la detection : "MAJAO Salsa y Bachata" tagge
   // Salsa/Bachata meme si les activites ne nomment pas le style.
-  const styles = detectStyles(ev.activities, ev.title, ev.venue);
+  const styles = eventStyles(ev);
   const gradient = styleGradient(styles);
   // Tags : styles standards d'abord ; sinon "Party" si social present ; sinon
   // un keyword extrait du titre ou de l'activite ("LINE DANCE..." -> "Line Dance").
@@ -465,7 +483,10 @@ function renderCards() {
     sections.push({ dayIdx, events: evs });
   }
   if (!sections.length || (sections.length === 1 && !sections[0].events.length)) {
-    $cards.innerHTML = `<div class="empty"><strong>No party scheduled this week yet.</strong>The scraper will add them as soon as a message lands in the group.</div>`;
+    const filtersActive = filterMode === 'parties' || styleFilter.size > 0;
+    $cards.innerHTML = filtersActive
+      ? `<div class="empty"><strong>Nothing matches the current filters.</strong>Try removing a style filter or switching back to All.</div>`
+      : `<div class="empty"><strong>No party scheduled this week yet.</strong>The scraper will add them as soon as a message lands in the group.</div>`;
     return;
   }
   $cards.innerHTML = sections
@@ -725,8 +746,25 @@ function switchView(view) {
   refresh();
 }
 
+// Chips de styles : uniquement les styles presents dans les donnees (+ ceux
+// deja selectionnes, pour pouvoir les deselectionner si les donnees changent).
+function renderStyleChips() {
+  const present = new Set();
+  for (const e of cache || []) eventStyles(e).forEach((s) => present.add(s));
+  styleFilter.forEach((s) => present.add(s));
+  $styleChips.innerHTML = STYLE_ORDER.filter((s) => present.has(s))
+    .map((s) => {
+      const active = styleFilter.has(s);
+      return `<button type="button" data-style="${s}" class="chip ${active ? 'active' : ''}" aria-pressed="${active}" style="--chip-hue: ${STYLE_HUE[s]}">
+        <span class="dot"></span>${STYLE_LABEL[s]}
+      </button>`;
+    })
+    .join('');
+}
+
 function refresh() {
   renderDayStrip();
+  renderStyleChips();
   if (activeView === 'cards') renderCards();
   else if (activeView === 'calendar') renderCalendar();
   else if (activeView === 'map') renderMap();
@@ -780,6 +818,16 @@ $filter.addEventListener('click', (e) => {
     b.classList.toggle('active', active);
     b.setAttribute('aria-pressed', String(active));
   });
+  refresh();
+});
+
+$styleChips.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-style]');
+  if (!btn) return;
+  const s = btn.dataset.style;
+  if (styleFilter.has(s)) styleFilter.delete(s);
+  else styleFilter.add(s);
+  try { localStorage.setItem('styleFilter', JSON.stringify([...styleFilter])); } catch { /* ignore */ }
   refresh();
 });
 
