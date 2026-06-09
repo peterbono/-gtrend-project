@@ -11,8 +11,8 @@ const monPos = (jsWeekday) => (jsWeekday + 6) % 7;
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-const STYLE_HUE = { salsa: 35, bachata: 340, kizomba: 280, zouk: 175, merengue: 50, tango: 0 };
-const STYLE_LABEL = { salsa: 'Salsa', bachata: 'Bachata', kizomba: 'Kizomba', zouk: 'Zouk', merengue: 'Merengue', tango: 'Tango' };
+const STYLE_HUE = { salsa: 35, bachata: 340, kizomba: 280, zouk: 175, merengue: 50, tango: 0, cumbia: 60 };
+const STYLE_LABEL = { salsa: 'Salsa', bachata: 'Bachata', kizomba: 'Kizomba', zouk: 'Zouk', merengue: 'Merengue', tango: 'Tango', cumbia: 'Cumbia' };
 
 // Overrides : certains styles meritent une signature visuelle distincte de la formule
 // "hue + sat/light standards". Le tango = vibe burgundy/wine, plus dark/sophistique
@@ -21,27 +21,36 @@ const STYLE_GRADIENT_OVERRIDE = {
   tango: 'linear-gradient(135deg, hsl(348 60% 35%) 0%, hsl(355 55% 22%) 55%, hsl(8 45% 10%) 100%)',
 };
 
-const STYLE_RE = /\b(salsa|bachata|kizomba|zouk|merengue|tango|cha[\s-]?cha)\b/i;
-const LEVEL_RE = /\b(beginner|intermediate|advanced|principiantes?|intermedios?|avanzados?|beg|int|adv|all\s*levels?)\b/i;
-const LEVEL_RE_G = /\b(beginner|intermediate|advanced|principiantes?|intermedios?|avanzados?|beg|int|adv|all\s*levels?)\b/gi;
-const SOCIAL_RE = /\b(social|baile|party)\b/i;
+const STYLE_RE = /\b(salsa|bachata|kizomba|zouk|merengue|tango|cumbia|cha[\s-]?cha)\b/i;
+const LEVEL_RE = /\b(beginner|intermediate|advanced|advance|principiantes?|intermedios?|avanzados?|inicial(?:es)?|b[aá]sicos?|abiertos?|beg|int|adv|all\s*levels?|open\s*level)\b/i;
+const LEVEL_RE_G = new RegExp(LEVEL_RE.source, 'gi');
+const SOCIAL_RE = /\b(social(?:es)?|baile|party|fiestas?|milonga|bailando|night)\b/i;
+// "Clase de Baile ..." contient "baile" mais reste une classe : contexte classe
+// sans marqueur de soiree explicite -> pas un social.
+const CLASS_CTX_RE = /\b(clases?|class(?:es)?|cours|workshop|taller|lecci[oó]n)\b/i;
+const EXPLICIT_PARTY_RE = /\b(social(?:es)?|party|fiestas?|milonga)\b/i;
 
 function normalizeLevel(raw) {
   const l = (raw || '').toLowerCase();
-  if (/principiante|beginner|^beg$/.test(l)) return 'Beginner';
+  if (/principiante|beginner|inicial|b[aá]sico|^beg$/.test(l)) return 'Beginner';
   if (/intermedio|intermediate|^int$/.test(l)) return 'Intermediate';
-  if (/avanzado|advanced|^adv$/.test(l)) return 'Advanced';
-  if (/all\s*levels/.test(l)) return 'All levels';
+  if (/avanzado|advanced|advance|^adv$/.test(l)) return 'Advanced';
+  if (/all\s*levels|abierto|open/.test(l)) return 'All levels';
   return raw;
 }
 // Sous-styles de danse : qualifient le style principal, vont a droite dans la meta
 // (pas a gauche en tant que prof).
-const SUBSTYLE_RE = /\b(tradicional|dominicana|moderna|sensual|urbana|figuras\s+sensuales|cubana|on\s*[12]|lineal|casino|rueda|tarraxa|ghetto\s+zouk|fusion)\b/i;
+const SUBSTYLE_RE = /\b(tradicional|dominicana|moderna|sensual|urbana|figuras\s+sensuales|cubana|on\s*[12]|lineal|casino|rueda|tarraxa|ghetto\s+zouk|fusion|lad(?:y|ies)\s+styles?|parejas|musicalizaci[oó]n)\b/i;
 
 const today = new Date();
 const todayDayIndex = today.getDay();
 let selectedDay = todayDayIndex;
 let activeView = 'cards';
+// Filtre global : 'all' (soirees + cours) ou 'parties' (soirees uniquement).
+let filterMode = 'all';
+try {
+  if (localStorage.getItem('filterMode') === 'parties') filterMode = 'parties';
+} catch { /* ignore */ }
 let cache = null;
 let cachedEtag = null;
 let calCursor = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -59,6 +68,7 @@ try {
 } catch { /* ignore */ }
 
 const $caption = document.getElementById('today-caption');
+const $filter = document.getElementById('filter-toggle');
 const $strip = document.getElementById('day-strip');
 const $cards = document.getElementById('cards');
 const $cal = document.getElementById('calendar');
@@ -69,6 +79,13 @@ const $mapCount = document.getElementById('map-count');
 const $tabbar = document.querySelector('.tabbar');
 
 $caption.textContent = `Today · ${DAYS_FULL[todayDayIndex]} ${MONTHS_FULL[today.getMonth()]} ${today.getDate()}`;
+
+// Etat initial du toggle (filterMode peut venir du localStorage).
+$filter.querySelectorAll('button').forEach((b) => {
+  const active = b.dataset.filter === filterMode;
+  b.classList.toggle('active', active);
+  b.setAttribute('aria-pressed', String(active));
+});
 
 function escapeHTML(s) {
   return String(s ?? '')
@@ -120,11 +137,31 @@ function styleGradient(styles) {
   return `linear-gradient(135deg, hsl(${h1} 78% 55%) 0%, hsl(${hMid} 70% 45%) 50%, hsl(${h2} 70% 35%) 100%)`;
 }
 
-function isSocial(a) { return SOCIAL_RE.test(a?.name || ''); }
+function isSocial(a) {
+  const name = a?.name || '';
+  if (!SOCIAL_RE.test(name)) return false;
+  // "Clase de Baile de Casino" matche "baile" mais c'est une classe.
+  if (CLASS_CTX_RE.test(name) && !EXPLICIT_PARTY_RE.test(name)) return false;
+  return true;
+}
+
+function eventHasSocial(ev) { return (ev.activities || []).some(isSocial); }
+
+// Events visibles selon le toggle Soirees/Tout.
+function visibleEvents() {
+  const evs = cache || [];
+  return filterMode === 'parties' ? evs.filter(eventHasSocial) : evs;
+}
 
 // Filler words a stripper du nom de l'activite : ne sont ni profs ni info utile.
 // Inclut les phrases de notice "2 classes at the same time", "al mismo tiempo".
-const FILLER_RE = /\b(clase\s*de|clases\s*de|class\s*of|classes\s*at\s*the\s*same\s*time|at\s*the\s*same\s*time|al\s*mismo\s*tiempo|cours\s*de|lesson|workshop|taller|de|of|du|le|la|the|y|and)\b/gi;
+const FILLER_RE = /\b(clases?\s*de|class(?:es)?\s*of|classes\s*at\s*the\s*same\s*time|at\s*the\s*same\s*time|al\s*mismo\s*tiempo|cours\s*de|clases?|class(?:es)?|lesson|workshop|taller|con|with|nivel(?:es)?|bailes?|de|of|du|le|la|the|y|and)\b/gi;
+
+// Title-case Unicode-safe : \b\w casse sur les accents ("CallejóN") car \w
+// ne matche pas ó. On ne capitalise qu'apres un non-lettre.
+function titleCaseUnicode(s) {
+  return (s || '').toLowerCase().replace(/(^|[^\p{L}])(\p{L})/gu, (m, pre, c) => pre + c.toUpperCase());
+}
 
 function decomposeWorkshop(name) {
   const styleMatch = (name || '').match(STYLE_RE);
@@ -136,29 +173,30 @@ function decomposeWorkshop(name) {
     .filter((l, i, arr) => arr.indexOf(l) === i); // dedup
 
   const subStyleMatch = (name || '').match(SUBSTYLE_RE);
-  const subStyle = subStyleMatch
-    ? subStyleMatch[1].toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
-    : '';
+  const subStyle = subStyleMatch ? titleCaseUnicode(subStyleMatch[1]) : '';
 
+  // Replace globaux : "Salsa Cubana Casino" a 2 sous-styles, un replace simple
+  // n'en stripperait qu'un et le reste polluerait le nom du prof.
   let who = (name || '')
-    .replace(STYLE_RE, '')
+    .replace(new RegExp(STYLE_RE.source, 'gi'), '')
     .replace(LEVEL_RE_G, '')
-    .replace(SUBSTYLE_RE, '')
+    .replace(new RegExp(SUBSTYLE_RE.source, 'gi'), '')
     .replace(FILLER_RE, '')
     .replace(/[()[\]]/g, '')           // strip parens
-    .replace(/\s+[ye]\s+/gi, ' ')      // strip conjonctions orphelines "e" / "y"
+    .replace(/\s+[yeo]\s+/gi, ' ')     // strip conjonctions orphelines "e" / "y" / "o"
     .replace(/&/g, ' ')                // strip residual "&"
     .replace(/[\/\\|]+/g, ' ')         // strip slashes
     .replace(/\d+\s*(classes|clases)/gi, '') // strip "2 classes" residuals
+    .replace(/^\s*\.m\.\s*/i, '')      // residu parser de "p.m." colle au nom
     .replace(/\s+/g, ' ')
     .trim();
-  // Strip leading/trailing punctuation (inclut em dash U+2014 et toute ponctuation residuelle).
-  who = who.replace(/^[\s·,;:\-–—\/\\|*]+|[\s·,;:\-–—\/\\|*]+$/g, '').trim();
+  // Strip leading/trailing punctuation (inclut em dash U+2014, fleches et toute ponctuation residuelle).
+  who = who.replace(/^[\s·,;:\-–—→›»>\/\\|*]+|[\s·,;:\-–—→›»>\/\\|*]+$/g, '').trim();
   // Si reste essentiellement de la ponctuation (< 2 lettres significatives), drop.
   const alphaCount = (who.match(/[a-zA-ZÀ-ſ]/g) || []).length;
   if (alphaCount < 2) who = '';
   if (who && who === who.toUpperCase()) {
-    who = who.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+    who = titleCaseUnicode(who);
   }
   return { who, style, levels, subStyle };
 }
@@ -190,31 +228,51 @@ function makeWorkshopRow({ who, style, subStyle }, level, fallbackName) {
   return { left, meta };
 }
 
+// Parse une borne ("7", "7:30", "8.30pm", "08 PM", "9p", "9:00p.m.") -> {h, min, ap}.
+function parseClock(s) {
+  const m = (s || '').toLowerCase().trim().match(/^(\d{1,2})(?:[:.h](\d{2}))?\s*(?:([ap])\.?\s*m?\.?)?$/);
+  if (!m) return null;
+  return { h: Number(m[1]), min: m[2] || '00', ap: m[3] || null };
+}
+
+// Resout une plage horaire en heures 24h, avec propagation du meridiem :
+// "7-11PM" -> le 7 est pm aussi (19:00 — 23:00). "9-1am" -> soiree qui passe
+// minuit, le 9 est pm (21:00 — 01:00). Split sur -, – et — (en/em dash).
+function resolveRange(t) {
+  const parts = (t || '').split(/[-–—]/).map((p) => p.trim()).filter(Boolean);
+  if (!parts.length) return null;
+  const clocks = parts.map(parseClock);
+  if (clocks.some((c) => !c)) return null;
+  const start = clocks[0];
+  const end = clocks[clocks.length - 1];
+  if (clocks.length > 1 && !start.ap && end.ap) {
+    if (end.ap === 'p') {
+      // "7-11pm" -> debut pm ; "11-1pm" traverse midi -> debut am.
+      start.ap = end.h < start.h && start.h !== 12 ? 'a' : 'p';
+    } else {
+      // "9-1am" traverse minuit -> debut pm ; "9-11am" -> debut am.
+      start.ap = end.h <= start.h && start.h !== 12 ? 'p' : 'a';
+    }
+  }
+  return clocks.map((c) => {
+    let h = c.h;
+    if (c.ap === 'p' && h < 12) h += 12;
+    else if (c.ap === 'a' && h === 12) h = 0;
+    return { h, min: c.min };
+  });
+}
+
 function fmtTime(t) {
   if (!t) return '';
-  const parts = t.split(/-/);
-  const fmtOne = (s) => {
-    const m = s.toLowerCase().trim().match(/^(\d{1,2})(?::(\d{2}))?\s*([ap])?m?$/);
-    if (!m) return s;
-    let h = Number(m[1]);
-    const min = m[2] || '00';
-    const ap = m[3];
-    if (ap === 'p' && h < 12) h += 12;
-    else if (ap === 'a' && h === 12) h = 0;
-    return `${String(h).padStart(2, '0')}:${min}`;
-  };
-  return parts.map(fmtOne).join(' — ');
+  const range = resolveRange(t);
+  if (!range) return t;
+  return range.map((c) => `${String(c.h).padStart(2, '0')}:${c.min}`).join(' — ');
 }
 
 function timeKey(t) {
-  const m = (t || '').toLowerCase().match(/^(\d{1,2})(?::(\d{2}))?\s*([ap])?/);
-  if (!m) return 9999;
-  let h = Number(m[1]);
-  const min = Number(m[2] || 0);
-  const ap = m[3];
-  if (ap === 'p' && h < 12) h += 12;
-  else if (ap === 'a' && h === 12) h = 0;
-  return h * 100 + min;
+  const range = resolveRange(t);
+  if (!range) return 9999;
+  return range[0].h * 100 + Number(range[0].min);
 }
 
 function cleanVenueShort(v) {
@@ -222,12 +280,26 @@ function cleanVenueShort(v) {
     .replace(/^(the|la|el|le)\s+/i, '')
     .split(/[,;]/)[0]
     .trim()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+    // Capitalise les debuts de mots sans casser les accents ("Callejón", pas "CallejóN").
+    .replace(/(^|\s)\p{Ll}/gu, (c) => c.toUpperCase());
 }
 
 function titleFor(ev) {
   const t = (ev.title || '').trim();
   return t || cleanVenueShort(ev.venue) || `${DAYS_FULL[ev.dayIndex]} night`;
+}
+
+// Lien maps garanti pour un venue. Les anciennes donnees ont des mapUrl
+// Instagram/linkfly (parser qui stockait n'importe quelle URL) ou pas de
+// mapUrl du tout : on ne sert mapUrl que si c'est un vrai lien carte, sinon
+// on retombe sur une recherche Google Maps "venue, Playa del Carmen".
+const MAPS_LINK_RE = /^(https?:\/\/)?(maps\.app\.goo\.gl|goo\.gl\/maps|(www\.)?google\.[a-z.]{2,10}\/maps|maps\.google|share\.google|(www\.)?waze\.com|maps\.apple\.com)/i;
+function venueMapHref(mapUrl, venueName) {
+  const u = (mapUrl || '').trim();
+  if (u && MAPS_LINK_RE.test(u)) return /^https?:\/\//i.test(u) ? u : `https://${u}`;
+  const name = (venueName || '').trim();
+  if (!name) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name}, Playa del Carmen`)}`;
 }
 
 function firstActivityTimeKey(ev) {
@@ -251,20 +323,22 @@ function renderDayStrip() {
 
 // ── Card ──────────────────────────────────────────────────
 function renderCard(ev) {
-  const styles = detectStyles(ev.activities);
+  // Titre et venue participent a la detection : "MAJAO Salsa y Bachata" tagge
+  // Salsa/Bachata meme si les activites ne nomment pas le style.
+  const styles = detectStyles(ev.activities, ev.title, ev.venue);
   const gradient = styleGradient(styles);
   // Tags : styles standards d'abord ; sinon "Party" si social present ; sinon
-  // un keyword extrait de l'activite (ex "Open Movement Session" -> "Open Movement").
+  // un keyword extrait du titre ou de l'activite ("LINE DANCE..." -> "Line Dance").
   let tagLabels;
   if (styles.length) {
     tagLabels = styles.slice(0, 3).map((s) => STYLE_LABEL[s] || s);
-  } else if ((ev.activities || []).some((a) => SOCIAL_RE.test(a.name || ''))) {
+  } else if (eventHasSocial(ev)) {
     tagLabels = ['Party'];
   } else {
-    const firstAct = (ev.activities || [])[0];
-    if (firstAct?.name) {
-      const words = firstAct.name.trim().split(/\s+/).slice(0, 2);
-      tagLabels = [words.join(' ').replace(/\b\w/g, (c) => c.toUpperCase())];
+    const src = (ev.title || '').trim() || (ev.activities || [])[0]?.name || '';
+    if (src) {
+      const words = src.split(/\s+/).slice(0, 2);
+      tagLabels = [titleCaseUnicode(words.join(' '))];
     } else {
       tagLabels = ['Class'];
     }
@@ -280,14 +354,15 @@ function renderCard(ev) {
   const dayLabel = DAYS_SHORT[ev.dayIndex].toUpperCase();
   const title = titleFor(ev);
   const venue = cleanVenueShort(ev.venue);
+  const venueHref = venueMapHref(ev.mapUrl, ev.venue);
   const venueHTML = venue
-    ? `<div class="card-loc"><span class="arrow" aria-hidden="true">↗</span><span class="vlabel">${ev.mapUrl ? `<a href="${escapeHTML(ev.mapUrl)}" target="_blank" rel="noopener">${escapeHTML(venue)}</a>` : escapeHTML(venue)}</span></div>`
+    ? `<div class="card-loc"><span class="arrow" aria-hidden="true">↗</span><span class="vlabel">${venueHref ? `<a href="${escapeHTML(venueHref)}" target="_blank" rel="noopener">${escapeHTML(venue)}</a>` : escapeHTML(venue)}</span></div>`
     : '';
 
   const acts = (ev.activities || []).slice().sort((a, b) => timeKey(a.time) - timeKey(b.time));
-  const workshops = acts.filter((a) => !isSocial(a));
+  // En mode "parties", on ne montre que la/les soirees : pas de section Classes.
+  const workshops = filterMode === 'parties' ? [] : acts.filter((a) => !isSocial(a));
   const socials = acts.filter(isSocial);
-  const social = socials[0];
 
   // Une ligne par activite. Si plusieurs niveaux sont detectes (ex "Beginner & Intermediate"),
   // on les combine en une seule etiquette : c'est UNE classe couvrant les 2 niveaux,
@@ -319,16 +394,20 @@ function renderCard(ev) {
       </div>`
     : '';
 
-  const socialHTML = social
-    ? `<div class="social-box">
+  // Toutes les soirees, pas seulement la premiere (certains venues ont
+  // pre-party + social, ou deux socials successifs).
+  const socialHTML = socials
+    .map(
+      (s) => `<div class="social-box">
         <div class="sb-meta">
           <span class="sb-label">Party</span>
-          <span class="sb-time">${escapeHTML(fmtTime(social.time))}</span>
-          <span class="sb-title">${escapeHTML(social.name || 'Social Dance')}</span>
+          <span class="sb-time">${escapeHTML(fmtTime(s.time))}</span>
+          <span class="sb-title">${escapeHTML(s.name || 'Social Dance')}</span>
         </div>
         <span class="sb-arrow" aria-hidden="true">▶</span>
       </div>`
-    : '';
+    )
+    .join('');
 
   return `<article class="card" style="--card-gradient: ${gradient}">
     <div class="card-top">
@@ -376,7 +455,7 @@ function setupScrollSpy() {
 
 function renderCards() {
   $cards.setAttribute('aria-busy', 'false');
-  const events = cache || [];
+  const events = visibleEvents();
   const sections = [];
   for (let offset = 0; offset < 7; offset++) {
     const dayIdx = (selectedDay + offset) % 7;
@@ -393,9 +472,13 @@ function renderCards() {
     .map((sec, i) => {
       const empty = sec.events.length === 0;
       const nextLabel = sections[i + 1] ? DAYS_FULL[sections[i + 1].dayIdx] : null;
+      // "events" en mode all (la plupart sont des soirs de cours), "parties" en mode soirees.
+      const noun = filterMode === 'parties'
+        ? `part${sec.events.length > 1 ? 'ies' : 'y'}`
+        : `event${sec.events.length > 1 ? 's' : ''}`;
       const headerHTML = `<div class="day-section-header">
         <span class="dsh-day">${DAYS_FULL[sec.dayIdx]}</span>
-        <span class="dsh-count">${empty ? '—' : `${sec.events.length} part${sec.events.length > 1 ? 'ies' : 'y'}`}</span>
+        <span class="dsh-count">${empty ? '—' : `${sec.events.length} ${noun}`}</span>
       </div>`;
       const bodyHTML = empty
         ? `<div class="day-empty">No party scheduled yet.${nextLabel ? `<br><span class="de-hint">Keep scrolling for ${nextLabel} ↓</span>` : ''}</div>`
@@ -412,7 +495,7 @@ function renderCalendar() {
   const year = calCursor.getFullYear();
   $calLabel.textContent = `${MONTHS_FULL[month]} ${year}`;
   const countByDayIdx = Array(7).fill(0);
-  for (const e of cache || []) countByDayIdx[e.dayIndex]++;
+  for (const e of visibleEvents()) countByDayIdx[e.dayIndex]++;
 
   const first = new Date(year, month, 1);
   // Decalage en convention lundi-first : 0 si le 1er du mois est un lundi, 6 si dimanche.
@@ -444,7 +527,7 @@ function renderCalendar() {
       const count = countByDayIdx[c.dayIdx];
       const isToday = !c.other && c.month === today.getMonth() && c.date === today.getDate() && year === today.getFullYear();
       const dots = '<span></span>'.repeat(Math.min(count, 3));
-      return `<button type="button" class="cal-day ${c.other ? 'is-other' : ''} ${count ? 'has-events' : ''} ${isToday ? 'is-today' : ''}" data-day="${c.dayIdx}" aria-label="${c.date} (${count} part${count > 1 ? 'ies' : 'y'})">
+      return `<button type="button" class="cal-day ${c.other ? 'is-other' : ''} ${count ? 'has-events' : ''} ${isToday ? 'is-today' : ''}" data-day="${c.dayIdx}" aria-label="${c.date} (${count} event${count > 1 ? 's' : ''})">
         <span class="cd-num">${c.date}</span>
         ${count ? `<span class="cd-dots">${dots}</span>` : ''}
       </button>`;
@@ -581,8 +664,13 @@ async function renderMap() {
   if (!userPos) requestGeolocation();
 
   const venues = await loadVenues();
+  // En mode "parties", on ne garde que les venues dont un event visible (= avec
+  // soiree) tombe le jour selectionne. /api/map ne renvoie pas les activities,
+  // on matche donc par id sur le cache de /api/events.
+  const visibleIds = cache ? new Set(visibleEvents().map((e) => e.id)) : null;
+  const matchesFilter = (ev) => filterMode === 'all' || !visibleIds || visibleIds.has(ev.id);
   const forDay = venues.filter((v) =>
-    v.events.some((ev) => ev.dayIndex === selectedDay) && v.lat != null && v.lon != null
+    v.events.some((ev) => ev.dayIndex === selectedDay && matchesFilter(ev)) && v.lat != null && v.lon != null
   );
   $mapCount.textContent = forDay.length;
 
@@ -592,7 +680,7 @@ async function renderMap() {
   }
 
   for (const v of forDay) {
-    const evsForDay = v.events.filter((ev) => ev.dayIndex === selectedDay);
+    const evsForDay = v.events.filter((ev) => ev.dayIndex === selectedDay && matchesFilter(ev));
     const count = evsForDay.length;
     const evList = evsForDay.map((ev) => `<div class="vp-row">${escapeHTML((ev.title || v.displayName).slice(0, 70))}</div>`).join('');
     const dist = userPos ? distanceMeters(userPos, { lat: v.lat, lon: v.lon }) : null;
@@ -600,7 +688,8 @@ async function renderMap() {
     const distHTML = dist != null
       ? `<div class="vp-dist" id="vp-dist-${v.venueKey}">🚶 ${fmtWalk(dist, true)} · ${fmtDist(dist)}</div>`
       : '';
-    const link = v.mapUrl ? `<div class="vp-link"><a href="${escapeHTML(v.mapUrl)}" target="_blank" rel="noopener">Directions ↗</a></div>` : '';
+    const dirHref = venueMapHref(v.mapUrl, v.displayName);
+    const link = dirHref ? `<div class="vp-link"><a href="${escapeHTML(dirHref)}" target="_blank" rel="noopener">Directions ↗</a></div>` : '';
     const popupHTML = `<strong>${escapeHTML(v.displayName)}</strong>${distHTML}<div class="vp-evs">${evList}</div>${link}`;
     const m = L.marker([v.lat, v.lon], { icon: venueIcon(count) }).addTo(mapInstance).bindPopup(popupHTML);
     m.on('popupopen', async () => {
@@ -679,6 +768,19 @@ $tabbar.addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-view]');
   if (!btn) return;
   switchView(btn.dataset.view);
+});
+
+$filter.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-filter]');
+  if (!btn || btn.dataset.filter === filterMode) return;
+  filterMode = btn.dataset.filter;
+  try { localStorage.setItem('filterMode', filterMode); } catch { /* ignore */ }
+  $filter.querySelectorAll('button').forEach((b) => {
+    const active = b.dataset.filter === filterMode;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-pressed', String(active));
+  });
+  refresh();
 });
 
 $calGrid.addEventListener('click', (e) => {

@@ -11,6 +11,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FILE = path.join(__dirname, '..', 'data', 'events.json');
 const KEY = 'playa:events';
 
+// Fraicheur : un event qui n'a pas ete revu depuis ce nombre de jours est
+// considere comme ponctuel (one-off) et n'est plus servi par allEvents().
+// Les events hebdomadaires recurrents sont re-vus chaque semaine, donc jamais filtres.
+const MAX_EVENT_AGE_DAYS = 10;
+
 const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 const useRedis = Boolean(REDIS_URL && REDIS_TOKEN);
@@ -56,20 +61,35 @@ function better(a, b) {
 // Normalise une heure vers le format 24h "HH:MM" pour dedup cross-locale.
 // "5pm" -> "17:00", "17:30" -> "17:30", "5:30pm" -> "17:30", "9am" -> "09:00".
 // "7-11PM" -> "19:00" (le PM en fin de plage propage au debut sans marqueur).
-function normTime(t) {
+// Gere aussi les formes collees ("11PM", "8p"), avec points ("8:00p.m.") et
+// les plages qui traversent minuit ("9-1am" -> 21:00) ou midi ("11-1pm" -> 11:00).
+// NB : pas de \b entre un chiffre et "pm" (les deux sont des word chars),
+// d'ou le pattern explicite ([ap])\.?\s*m?\.? qui matche colle OU detache.
+const MERIDIEM_PART = /^(\d{1,2})(?::(\d{2}))?\s*(?:([ap])\.?\s*m?\.?)?/;
+export function normTime(t) {
   const s = (t || '').toLowerCase().trim();
   const parts = s.split(/[-–]/);
   const startPart = parts[0].trim();
   const endPart = parts.slice(1).join('-').trim();
-  const m = startPart.match(/^(\d{1,2})(?::(\d{2}))?\s*(am?|pm?)?\b/);
-  if (!m) return s;
+  const m = startPart.match(MERIDIEM_PART);
+  if (!m || !m[1]) return s;
   let h = Number(m[1]);
   const min = Number(m[2] || 0);
-  let ap = m[3]?.[0];
-  // Si le debut n'a pas d'am/pm, on cherche dans la fin de plage : "7-11PM" -> p
+  let ap = m[3];
+  // Si le debut n'a pas d'am/pm, on le deduit de la fin de plage : "7-11PM" -> p.
   if (!ap && endPart) {
-    const endApMatch = endPart.match(/\b(am?|pm?)\b/i);
-    if (endApMatch) ap = endApMatch[1][0].toLowerCase();
+    const endM = endPart.match(MERIDIEM_PART);
+    if (endM && endM[3]) {
+      const endAp = endM[3];
+      const endH = Number(endM[1]);
+      if (endAp === 'a') {
+        // "9-1am" traverse minuit -> le debut est en soiree (pm).
+        ap = endH <= h && h !== 12 ? 'p' : 'a';
+      } else {
+        // "11-1pm" traverse midi -> le debut est le matin (am). "7-11pm" -> pm.
+        ap = endH < h && h !== 12 ? 'a' : 'p';
+      }
+    }
   }
   if (ap === 'p' && h < 12) h += 12;
   else if (ap === 'a' && h === 12) h = 0;
@@ -150,7 +170,7 @@ function styleLevelKey(act) {
   return `${normTime(act.time)}|${style}|${level}`;
 }
 
-function mergeActivities(a = [], b = []) {
+export function mergeActivities(a = [], b = []) {
   const all = [...(a || []), ...(b || [])];
   const out = [];
   const seenSocialStarts = new Map();
@@ -277,9 +297,20 @@ export async function upsertMany(events, meta = {}) {
   return saved;
 }
 
+// Filtre de fraicheur : drop les events ponctuels jamais revus depuis
+// MAX_EVENT_AGE_DAYS. Defensif : lastSeen absent ou illisible -> on garde.
+export function isFreshEvent(ev, now = Date.now()) {
+  if (!ev?.lastSeen) return true;
+  const seen = Date.parse(ev.lastSeen);
+  if (Number.isNaN(seen)) return true;
+  return now - seen <= MAX_EVENT_AGE_DAYS * 24 * 60 * 60 * 1000;
+}
+
 export async function allEvents() {
   const map = await readMap();
-  return Object.values(map).sort((a, b) => a.dayIndex - b.dayIndex);
+  return Object.values(map)
+    .filter((ev) => isFreshEvent(ev))
+    .sort((a, b) => a.dayIndex - b.dayIndex);
 }
 
 export async function eventsForDay(dayIndex) {

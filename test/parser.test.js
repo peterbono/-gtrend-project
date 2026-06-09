@@ -69,3 +69,84 @@ test('eventId stable et unique par jour/lieu', () => {
 test('texte sans jour -> aucun evenement', () => {
   assert.deepEqual(parseMessage('Hola a todos! Nos vemos pronto 💃'), []);
 });
+
+// ── mapUrl : restreint aux domaines cartes ───────────────────────────────────
+
+test('un lien non-maps (Instagram, linkfly) ne devient jamais mapUrl', () => {
+  const msg = `LUNES – Salsa Night
+8p Clase de Salsa
+📍 On Stage
+https://www.instagram.com/onstageplaya
+https://linkfly.to/onstage`;
+  const [ev] = parseMessage(msg);
+  assert.equal(ev.venue, 'On Stage');
+  assert.equal(ev.mapUrl, null);
+});
+
+test('lien maps prioritaire meme si un lien non-maps est present', () => {
+  const msg = `LUNES – Salsa Night
+8p Clase de Salsa
+📍 On Stage
+https://www.instagram.com/onstageplaya
+https://maps.app.goo.gl/2kazpa7CvQ9hQAkt8`;
+  const [ev] = parseMessage(msg);
+  assert.equal(ev.mapUrl, 'https://maps.app.goo.gl/2kazpa7CvQ9hQAkt8');
+});
+
+test('lien maps sans protocole apres 📍 -> mapUrl, pas un nom de venue', () => {
+  const msg = `MARTES – Bachata Social
+9p Baile Social
+📍 maps.app.goo.gl/2kazpa7CvQ9hQAkt8
+📍 La Fe Restaurante`;
+  const [ev] = parseMessage(msg);
+  assert.equal(ev.mapUrl, 'https://maps.app.goo.gl/2kazpa7CvQ9hQAkt8');
+  assert.equal(ev.venue, 'La Fe Restaurante');
+});
+
+test('domaines maps varies acceptes (google.com/maps, waze, share.google)', () => {
+  for (const link of [
+    'https://www.google.com/maps/place/On+Stage',
+    'https://goo.gl/maps/abc123',
+    'https://maps.google.com/?q=on+stage',
+    'https://waze.com/ul/h9sx4u',
+    'https://share.google/SAXsOCosy1JUOCQ4d',
+  ]) {
+    const [ev] = parseMessage(`LUNES – Test\n8p Clase\n📍 On Stage\n${link}`);
+    assert.equal(ev.mapUrl, link, `mapUrl devrait accepter ${link}`);
+  }
+});
+
+// ── TIME_RE : meridiem pointe "8:00p.m." ─────────────────────────────────────
+
+test('heure "8:00p.m." ne laisse pas ".m." dans le nom d\'activite', () => {
+  const msg = `MIERCOLES – Salsa On1
+8:00p.m. Salsa On1
+9:30 P.M. Bachata Sensual
+📍 On Stage`;
+  const [ev] = parseMessage(msg);
+  assert.deepEqual(ev.activities.map((a) => a.name), ['Salsa On1', 'Bachata Sensual']);
+  assert.equal(ev.activities[0].time, '8:00p.m.');
+});
+
+// ── stripLead / stripFillerPrefix ────────────────────────────────────────────
+
+test('fleches "→" et pipes "|" en tete de ligne sont strippes', () => {
+  const msg = `JUEVES – Social
+→ 8p Clase de Salsa
+| 9p Baile Social
+📍 On Stage`;
+  const [ev] = parseMessage(msg);
+  assert.deepEqual(ev.activities.map((a) => a.name), ['Clase de Salsa', 'Baile Social']);
+});
+
+test('prefixes "¿Dónde?" et "Nos vemos en" strippes du venue', () => {
+  const cases = [
+    ['📍 ¿Dónde? Fiesta Inn', 'Fiesta Inn'],
+    ['📍 ¿Donde? Fiesta Inn', 'Fiesta Inn'],
+    ['📍 Nos vemos en Fiesta Inn', 'Fiesta Inn'],
+  ];
+  for (const [pinLine, expected] of cases) {
+    const [ev] = parseMessage(`VIERNES – Social\n8p Clase\n${pinLine}`);
+    assert.equal(ev.venue, expected, `venue pour "${pinLine}"`);
+  }
+});
