@@ -61,14 +61,57 @@ button { font: inherit; cursor: pointer; }
   margin-inline: auto;
 }
 
-/* ── FILTER TOGGLE (All / Parties) ─────────────────────── */
+/* ── FILTER ROW (style chips + All/Parties) ────────────── */
 /* Dans le contenu, au-dessus de la ligne "Tuesday · N events". */
 .filter-row {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   max-width: 720px;
   margin: 0 auto;
   padding: 2px 4px 0;
+}
+.style-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  flex: 1;
+  min-width: 0;
+  padding: 2px 0;
+  scrollbar-width: none;
+}
+.style-chips::-webkit-scrollbar { display: none; }
+.style-chips .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-weight: 700;
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0 11px;
+  min-height: 28px;
+  border-radius: 999px;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+}
+.style-chips .chip .dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: hsl(var(--chip-hue) 75% 55%);
+  flex-shrink: 0;
+}
+.style-chips .chip.active {
+  background: hsl(var(--chip-hue) 70% 45% / 0.22);
+  border-color: hsl(var(--chip-hue) 70% 55% / 0.6);
+  color: var(--text);
+}
+@media (hover: hover) {
+  .style-chips .chip:hover:not(.active) { border-color: var(--border-2); color: var(--text); }
 }
 .filter-toggle {
   display: inline-flex;
