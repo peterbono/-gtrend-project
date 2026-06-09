@@ -6,7 +6,7 @@ import { detectDay } from './days.js';
 function stripLead(line) {
   return line
     .replace(/^([\d]️⃣|️⃣)+/u, '') // keycaps "1️⃣"
-    .replace(/^[\s\p{Extended_Pictographic}\u{FE0F}\u{200D}\u{1F3FB}-\u{1F3FF}•\-–·*►▶▪◆▫○●—]+/u, '')
+    .replace(/^[\s\p{Extended_Pictographic}\u{FE0F}\u{200D}\u{1F3FB}-\u{1F3FF}•\-–·*►▶▪◆▫○●—→|]+/u, '')
     .trim();
 }
 
@@ -24,20 +24,26 @@ function stripMarkdown(s) {
 function stripFillerPrefix(s) {
   return (s || '')
     .replace(/^\s*(lugar|lieu|place|venue|donde|where|adresse|address|direccion|dirección)\s*[:：]\s*/i, '')
+    // "¿Dónde? Fiesta Inn" / "Donde? ..." : on exige ¿ ou ? pour ne pas
+    // amputer un vrai nom de lieu commencant par "Donde ...".
+    .replace(/^\s*(?:¿\s*d[oó]nde\s*\?*|d[oó]nde\s*\?+)\s*[:：]?\s*/i, '')
+    .replace(/^\s*nos\s+vemos\s+en\s+/i, '')
     .replace(/^\s*[★⭐✨🎉]+\s*/u, '')
     .trim();
 }
 
 // Detecte une heure ou plage horaire en debut de ligne (case insensitive sur am/pm).
-// Ex: "6p", "9-10p", "9p-1a", "7pm", "7-11p", "21:00", "5:00 PM – 7:30 PM".
-const TIME_RE = /^(\d{1,2}(?::\d{2})?\s*(?:[ap]m?)?(?:\s*[-–a]\s*\d{1,2}(?::\d{2})?\s*(?:[ap]m?)?)?)\b/i;
+// Ex: "6p", "9-10p", "9p-1a", "7pm", "7-11p", "21:00", "5:00 PM – 7:30 PM", "8:00p.m.".
+// Les points de "a.m."/"p.m." sont consommes pour ne pas laisser ".m." dans le nom.
+// (?!\w) au lieu de \b : apres un "." final il n'y a pas de word boundary.
+const TIME_RE = /^(\d{1,2}(?::\d{2})?\s*(?:[ap]\.?m?\.?)?(?:\s*[-–a]\s*\d{1,2}(?::\d{2})?\s*(?:[ap]\.?m?\.?)?)?)(?!\w)/i;
 
 function parseTime(line) {
   const clean = stripLead(line);
   const m = clean.match(TIME_RE);
   if (!m) return null;
   const time = m[1].replace(/\s+/g, '').toLowerCase();
-  let name = clean.slice(m[0].length).replace(/^[\s:–-]+/, '').trim();
+  let name = clean.slice(m[0].length).replace(/^[\s:.–-]+/, '').trim();
   // Strippe le "h" espagnol/portugais ("19:00 h –", "19h –") + tirets restants.
   name = name.replace(/^h(?:rs?|oras?)?\b\s*/i, '');
   name = name.replace(/^[–\-—]+\s*/, '').trim();
@@ -50,6 +56,23 @@ function parseTime(line) {
 
 const URL_RE = /(https?:\/\/\S+)/i;
 const ONLY_URL_RE = /^\s*https?:\/\/\S+\s*$/i;
+
+// Domaines cartes reconnus : seuls ces liens deviennent mapUrl (bouton "Directions").
+// Tout autre lien (Instagram, linkfly.to...) est ignore pour ne pas polluer mapUrl.
+// Le protocole est optionnel : "maps.app.goo.gl/xyz" colle apres 📍 est frequent.
+const MAP_DOMAINS = String.raw`maps\.app\.goo\.gl|goo\.gl\/maps|(?:www\.)?google\.[a-z.]{2,10}\/maps|maps\.google\.[a-z.]{2,10}|share\.google|(?:www\.)?waze\.com|maps\.apple\.com|(?:www\.)?apple\.com\/maps`;
+const MAP_URL_RE = new RegExp(String.raw`((?:https?:\/\/)?(?:${MAP_DOMAINS})\S*)`, 'i');
+const MAP_URL_START_RE = new RegExp(String.raw`^(?:https?:\/\/)?(?:${MAP_DOMAINS})([\/?#]|$)`, 'i');
+const ONLY_MAP_URL_RE = new RegExp(String.raw`^\s*(?:https?:\/\/)?(?:${MAP_DOMAINS})\S*\s*$`, 'i');
+
+function isMapUrl(u) {
+  return MAP_URL_START_RE.test((u || '').trim());
+}
+// Normalise un lien maps "nu" (sans protocole) en URL cliquable.
+function toMapUrl(u) {
+  const url = (u || '').trim();
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
 const ONLY_TIME_RE = /^\s*\d{1,2}(?::\d{2})?\s*(?:[apAP]m?)?\s*$/;
 const PIN = '\u{1F4CD}'; // 📍
 
@@ -126,25 +149,28 @@ export function parseMessage(text) {
     if (line.includes(PIN)) {
       const afterPin = stripFillerPrefix(stripMarkdown(line.split(PIN)[1].replace(/^[\s:]+/, '').trim()));
       if (afterPin) {
-        if (ONLY_URL_RE.test(afterPin)) {
-          // 📍 https://maps... = lien Maps du lieu, pas le nom du venue.
-          current.mapUrl = afterPin;
+        if (ONLY_URL_RE.test(afterPin) || ONLY_MAP_URL_RE.test(afterPin)) {
+          // 📍 lien seul (avec ou sans protocole) = jamais le nom du venue.
+          // Lien maps -> mapUrl ; autre domaine (Instagram...) -> ignore.
+          if (isMapUrl(afterPin)) current.mapUrl = toMapUrl(afterPin);
         } else {
           current.venue = afterPin;
           // Le venue peut contenir l'URL en suffixe : on la separe.
-          const urlIn = afterPin.match(URL_RE);
+          const urlIn = afterPin.match(URL_RE) || afterPin.match(MAP_URL_RE);
           if (urlIn) {
             current.venue = afterPin.replace(urlIn[0], '').replace(/[\s,;|]+$/, '').trim();
-            current.mapUrl = current.mapUrl || urlIn[1];
+            if (!current.mapUrl && isMapUrl(urlIn[1])) current.mapUrl = toMapUrl(urlIn[1]);
           }
         }
       }
       continue;
     }
 
-    const url = line.match(URL_RE);
+    const url = line.match(URL_RE) || line.match(MAP_URL_RE);
     if (url) {
-      current.mapUrl = url[1];
+      // Seuls les liens cartes alimentent mapUrl ; un lien Instagram/linkfly
+      // est consomme (la ligne reste ignoree) mais jamais stocke.
+      if (isMapUrl(url[1])) current.mapUrl = current.mapUrl || toMapUrl(url[1]);
       continue;
     }
 
