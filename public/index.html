@@ -14,17 +14,17 @@
 </head>
 <body>
   <header class="top">
-    <div class="head-row">
-      <div class="caption" id="today-caption">—</div>
+    <div class="caption" id="today-caption">—</div>
+    <nav id="day-strip" class="day-strip" aria-label="Day of the week"></nav>
+  </header>
+
+  <main id="main">
+    <div class="filter-row">
       <div id="filter-toggle" class="filter-toggle" role="group" aria-label="Event type filter">
         <button type="button" data-filter="all" class="active" aria-pressed="true">All</button>
         <button type="button" data-filter="parties" aria-pressed="false">Parties</button>
       </div>
     </div>
-    <nav id="day-strip" class="day-strip" aria-label="Day of the week"></nav>
-  </header>
-
-  <main id="main">
     <section id="cards" class="cards-view" aria-live="polite" aria-busy="false">
       <p class="loading">Loading…</p>
     </section>
