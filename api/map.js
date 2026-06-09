@@ -16,18 +16,31 @@ export default async function handler(req, res) {
     byVenue.get(key).events.push({ id: ev.id, dayIndex: ev.dayIndex, title: ev.title });
   }
 
+  // Boite englobante Playa del Carmen : un venue geocode hors zone (Tulum,
+  // Cancun...) ne doit jamais atterrir sur la carte. On remet lat/lon a null :
+  // le client filtre deja les venues sans coords.
+  const inPlayaBox = (lat, lon) => lat >= 20.55 && lat <= 20.72 && lon >= -87.15 && lon <= -86.98;
+
   const venues = [];
   for (const v of byVenue.values()) {
     let geo = null;
     try { geo = await geocodeVenue(v.displayName, v.mapUrl); } catch { /* ignore */ }
+    let lat = geo?.lat ?? null;
+    let lon = geo?.lon ?? null;
+    let geocoded = !!geo?.found;
+    if (lat != null && lon != null && !inPlayaBox(lat, lon)) {
+      lat = null;
+      lon = null;
+      geocoded = false;
+    }
     venues.push({
       venueKey: v.venueKey,
       displayName: v.displayName,
       mapUrl: v.mapUrl,
       events: v.events,
-      lat: geo?.lat ?? null,
-      lon: geo?.lon ?? null,
-      geocoded: !!geo?.found,
+      lat,
+      lon,
+      geocoded,
     });
   }
 

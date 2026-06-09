@@ -569,13 +569,15 @@ const PLAYA_BOUNDS = [[20.585, -87.105], [20.685, -87.04]];
 function ensureMap() {
   if (mapInstance || typeof L === 'undefined') return;
   mapInstance = L.map('map', {
-    zoomControl: true,
+    // Zoom en bas a droite : en plein ecran le coin haut-gauche est sous le header.
+    zoomControl: false,
     attributionControl: true,
     maxBounds: PLAYA_BOUNDS,
     maxBoundsViscosity: 1.0,
     minZoom: 13,
     maxZoom: 18,
   }).fitBounds(PLAYA_BOUNDS, { padding: [10, 10] });
+  L.control.zoom({ position: 'bottomright' }).addTo(mapInstance);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap',
     bounds: PLAYA_BOUNDS,
@@ -691,11 +693,11 @@ async function renderMap() {
   if (!userPos) requestGeolocation();
 
   const venues = await loadVenues();
-  // En mode "parties", on ne garde que les venues dont un event visible (= avec
-  // soiree) tombe le jour selectionne. /api/map ne renvoie pas les activities,
-  // on matche donc par id sur le cache de /api/events.
+  // Memes filtres que les cards (Parties + styles). /api/map ne renvoie pas les
+  // activities, on matche donc par id sur le cache de /api/events. NB : pas de
+  // raccourci sur filterMode — le filtre styles s'applique aussi en mode All.
   const visibleIds = cache ? new Set(visibleEvents().map((e) => e.id)) : null;
-  const matchesFilter = (ev) => filterMode === 'all' || !visibleIds || visibleIds.has(ev.id);
+  const matchesFilter = (ev) => !visibleIds || visibleIds.has(ev.id);
   const forDay = venues.filter((v) =>
     v.events.some((ev) => ev.dayIndex === selectedDay && matchesFilter(ev)) && v.lat != null && v.lon != null
   );
@@ -749,6 +751,9 @@ function switchView(view) {
   $mapView.hidden = view !== 'map';
   // Day strip is only useful for cards + map (calendar already shows all days).
   $strip.hidden = view === 'calendar';
+  // Mode plein ecran facon Google Maps : la carte devient le fond, header,
+  // CTA filtres, legende et tabbar flottent au-dessus.
+  document.body.classList.toggle('map-mode', view === 'map');
   refresh();
 }
 
