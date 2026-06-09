@@ -79,6 +79,9 @@ try {
 const $caption = document.getElementById('today-caption');
 const $filter = document.getElementById('filter-toggle');
 const $styleChips = document.getElementById('style-chips');
+const $filterCta = document.getElementById('filter-cta');
+const $filterBadge = document.getElementById('filter-badge');
+const $filterDrawer = document.getElementById('filter-drawer');
 const $strip = document.getElementById('day-strip');
 const $cards = document.getElementById('cards');
 const $cal = document.getElementById('calendar');
@@ -90,12 +93,15 @@ const $tabbar = document.querySelector('.tabbar');
 
 $caption.textContent = `Today · ${DAYS_FULL[todayDayIndex]} ${MONTHS_FULL[today.getMonth()]} ${today.getDate()}`;
 
+function syncFilterToggleUI() {
+  $filter.querySelectorAll('button').forEach((b) => {
+    const active = b.dataset.filter === filterMode;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-pressed', String(active));
+  });
+}
 // Etat initial du toggle (filterMode peut venir du localStorage).
-$filter.querySelectorAll('button').forEach((b) => {
-  const active = b.dataset.filter === filterMode;
-  b.classList.toggle('active', active);
-  b.setAttribute('aria-pressed', String(active));
-});
+syncFilterToggleUI();
 
 function escapeHTML(s) {
   return String(s ?? '')
@@ -762,9 +768,30 @@ function renderStyleChips() {
     .join('');
 }
 
+// Badge du CTA Filters : nombre de filtres actifs (Parties + styles).
+function updateFilterCta() {
+  const n = (filterMode === 'parties' ? 1 : 0) + styleFilter.size;
+  $filterBadge.hidden = n === 0;
+  $filterBadge.textContent = n;
+  $filterCta.classList.toggle('has-filters', n > 0);
+}
+
+function openFilterDrawer() {
+  $filterDrawer.hidden = false;
+  document.body.classList.add('no-scroll');
+  // rAF : [hidden] coupe le display, il faut un frame avant de lancer la transition.
+  requestAnimationFrame(() => $filterDrawer.classList.add('open'));
+}
+function closeFilterDrawer() {
+  $filterDrawer.classList.remove('open');
+  document.body.classList.remove('no-scroll');
+  setTimeout(() => { $filterDrawer.hidden = true; }, 220);
+}
+
 function refresh() {
   renderDayStrip();
   renderStyleChips();
+  updateFilterCta();
   if (activeView === 'cards') renderCards();
   else if (activeView === 'calendar') renderCalendar();
   else if (activeView === 'map') renderMap();
@@ -813,12 +840,25 @@ $filter.addEventListener('click', (e) => {
   if (!btn || btn.dataset.filter === filterMode) return;
   filterMode = btn.dataset.filter;
   try { localStorage.setItem('filterMode', filterMode); } catch { /* ignore */ }
-  $filter.querySelectorAll('button').forEach((b) => {
-    const active = b.dataset.filter === filterMode;
-    b.classList.toggle('active', active);
-    b.setAttribute('aria-pressed', String(active));
-  });
+  syncFilterToggleUI();
   refresh();
+});
+
+$filterCta.addEventListener('click', openFilterDrawer);
+$filterDrawer.querySelector('.fd-backdrop').addEventListener('click', closeFilterDrawer);
+document.getElementById('fd-done').addEventListener('click', closeFilterDrawer);
+document.getElementById('fd-reset').addEventListener('click', () => {
+  filterMode = 'all';
+  styleFilter.clear();
+  try {
+    localStorage.setItem('filterMode', filterMode);
+    localStorage.setItem('styleFilter', '[]');
+  } catch { /* ignore */ }
+  syncFilterToggleUI();
+  refresh();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$filterDrawer.hidden) closeFilterDrawer();
 });
 
 $styleChips.addEventListener('click', (e) => {

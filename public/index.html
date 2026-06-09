@@ -20,11 +20,16 @@
 
   <main id="main">
     <div class="filter-row">
-      <div id="style-chips" class="style-chips" role="group" aria-label="Dance style filter"></div>
-      <div id="filter-toggle" class="filter-toggle" role="group" aria-label="Event type filter">
-        <button type="button" data-filter="all" class="active" aria-pressed="true">All</button>
-        <button type="button" data-filter="parties" aria-pressed="false">Parties</button>
-      </div>
+      <button id="filter-cta" class="filter-cta" type="button" aria-haspopup="dialog" aria-controls="filter-drawer">
+        <svg class="fc-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="21" y1="5" x2="14" y2="5"/><line x1="10" y1="5" x2="3" y2="5"/>
+          <line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/>
+          <line x1="21" y1="19" x2="16" y2="19"/><line x1="12" y1="19" x2="3" y2="19"/>
+          <circle cx="12" cy="5" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="19" r="2"/>
+        </svg>
+        Filters
+        <span id="filter-badge" class="filter-badge" hidden>0</span>
+      </button>
     </div>
     <section id="cards" class="cards-view" aria-live="polite" aria-busy="false">
       <p class="loading">Loading…</p>
@@ -49,6 +54,29 @@
       </div>
     </section>
   </main>
+
+  <div id="filter-drawer" class="filter-drawer" hidden>
+    <div class="fd-backdrop"></div>
+    <div class="fd-sheet" role="dialog" aria-modal="true" aria-label="Filters">
+      <div class="fd-handle" aria-hidden="true"></div>
+      <div class="fd-title">Filters</div>
+      <div class="fd-section">
+        <div class="fd-label">Show</div>
+        <div id="filter-toggle" class="filter-toggle" role="group" aria-label="Event type filter">
+          <button type="button" data-filter="all" class="active" aria-pressed="true">All events</button>
+          <button type="button" data-filter="parties" aria-pressed="false">Parties only</button>
+        </div>
+      </div>
+      <div class="fd-section">
+        <div class="fd-label">Dance styles</div>
+        <div id="style-chips" class="style-chips" role="group" aria-label="Dance style filter"></div>
+      </div>
+      <div class="fd-actions">
+        <button id="fd-reset" class="fd-reset" type="button">Reset</button>
+        <button id="fd-done" class="fd-done" type="button">Done</button>
+      </div>
+    </div>
+  </div>
 
   <nav class="tabbar" aria-label="View mode">
     <button data-view="cards" class="active" type="button">
