@@ -25,6 +25,70 @@ test('lookupKnown: "Nos vemos en Mexcalli" matche "mexcalli" (filler retire)', (
   assert.equal(hit.lat, 20.6286);
 });
 
+// Les 6 venues prod qui restaient lat=null (Nominatim + LLM en echec) :
+// noms EXACTS tels qu'ils sortent de /api/map.
+
+test('lookupKnown: "On stage academia" et "ON STAGE" matchent "on stage"', () => {
+  const a = lookupKnown('On stage academia');
+  assert.ok(a);
+  assert.equal(a.lat, 20.6345);
+  assert.equal(a.lon, -87.0735);
+  assert.deepEqual(lookupKnown('ON STAGE'), a);
+});
+
+test('lookupKnown: "Av. 10 con calle 34 - Playa del Carmen" matche le coin de rue', () => {
+  const hit = lookupKnown('Av. 10 con calle 34 - Playa del Carmen');
+  assert.ok(hit);
+  assert.equal(hit.lat, 20.6345);
+  assert.equal(hit.lon, -87.0681);
+});
+
+test('lookupKnown: "HOM HOSTEL BOUTIQUE, CALLE 26 ENTRE CALLE 20 Y 25 NTE" matche "hom hostel"', () => {
+  const hit = lookupKnown('HOM HOSTEL BOUTIQUE, CALLE 26 ENTRE CALLE 20 Y 25 NTE');
+  assert.ok(hit);
+  assert.equal(hit.lat, 20.6342);
+  assert.equal(hit.lon, -87.0719);
+});
+
+test('lookupKnown: "RAICES MIXOLOGY BAR, Calle Corazon entre calle 12 y 14" matche "raices mixology"', () => {
+  const hit = lookupKnown('RAICES MIXOLOGY BAR, Calle Corazon entre calle 12 y 14');
+  assert.ok(hit);
+  assert.equal(hit.lat, 20.6279);
+  assert.equal(hit.lon, -87.0717);
+});
+
+test('lookupKnown: "The Fives Downtown Hotel & Residences, Calle 2 esquina av 10" matche "fives downtown"', () => {
+  const hit = lookupKnown('The Fives Downtown Hotel & Residences, Calle 2 esquina av 10');
+  assert.ok(hit);
+  assert.equal(hit.lat, 20.6241);
+  assert.equal(hit.lon, -87.0755);
+});
+
+test('lookupKnown: "CACHE BOUTIQUE HOTEL" matche "cache boutique"', () => {
+  const hit = lookupKnown('CACHE BOUTIQUE HOTEL');
+  assert.ok(hit);
+  assert.equal(hit.lat, 20.6279);
+  assert.equal(hit.lon, -87.0740);
+});
+
+test('lookupKnown: toutes les coords KNOWN tombent dans la zone Playa', () => {
+  const names = [
+    'the WAREHOUSE', 'Mexcalli', 'STEP DANCE', 'ON STAGE',
+    'Av. 10 con calle 34 - Playa del Carmen', 'HOM HOSTEL BOUTIQUE',
+    'RAICES MIXOLOGY BAR', 'The Fives Downtown Hotel & Residences', 'CACHE BOUTIQUE HOTEL',
+  ];
+  for (const n of names) {
+    const hit = lookupKnown(n);
+    assert.ok(hit, `pas de hit pour ${n}`);
+    assert.ok(hit.lat >= 20.55 && hit.lat <= 20.72, `lat hors zone pour ${n}: ${hit.lat}`);
+    assert.ok(hit.lon >= -87.15 && hit.lon <= -86.98, `lon hors zone pour ${n}: ${hit.lon}`);
+  }
+});
+
+test('lookupKnown: "La Fonda de la Tulum" reste null (resto de Cancun, hors zone)', () => {
+  assert.equal(lookupKnown('La Fonda de la Tulum'), null);
+});
+
 test('lookupKnown: word-boundary, pas de faux positif sur un mot englobant', () => {
   // "warehouses" ne doit PAS matcher la cle "warehouse".
   assert.equal(lookupKnown('Warehouses Cancun Storage'), null);

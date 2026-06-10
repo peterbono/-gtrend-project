@@ -63,6 +63,8 @@ try {
 let cache = null;
 let cachedEtag = null;
 let calCursor = new Date(today.getFullYear(), today.getMonth(), 1);
+// Date selectionnee dans la vue Calendar (pilote les cards du jour en haut).
+let calSelectedDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 let mapInstance = null;
 let mapMarkers = [];
 let mapRouteLayer = null;
@@ -87,6 +89,9 @@ const $cards = document.getElementById('cards');
 const $cal = document.getElementById('calendar');
 const $calGrid = document.getElementById('cal-grid');
 const $calLabel = document.getElementById('cal-month-label');
+const $calDayCards = document.getElementById('cal-day-cards');
+const $calDayLabel = document.getElementById('cal-day-label');
+const $calDayCount = document.getElementById('cal-day-count');
 const $mapView = document.getElementById('map-view');
 const $mapCount = document.getElementById('map-count');
 const $tabbar = document.querySelector('.tabbar');
@@ -116,6 +121,10 @@ function dateOfWeekday(dayIndex) {
   const d = new Date(today);
   d.setDate(d.getDate() + diff);
   return d.getDate();
+}
+// ISO local (YYYY-MM-DD) sans decalage timezone.
+function isoDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function detectStyles(activities, title = '', venue = '') {
@@ -383,15 +392,22 @@ function renderCard(ev) {
     ? `<div class="card-loc"><span class="arrow" aria-hidden="true">↗</span><span class="vlabel">${venueHref ? `<a href="${escapeHTML(venueHref)}" target="_blank" rel="noopener">${escapeHTML(venue)}</a>` : escapeHTML(venue)}</span></div>`
     : '';
 
-  const acts = (ev.activities || []).slice().sort((a, b) => timeKey(a.time) - timeKey(b.time));
+  // On garde l'ordre STOCKE pour la dedup (la premiere version d'un creneau
+  // est la plus confirmee), le tri horaire vient apres.
+  const actsStored = ev.activities || [];
   // En mode "parties", on ne montre que la/les soirees : pas de section Classes.
-  const workshops = filterMode === 'parties' ? [] : acts.filter((a) => !isSocial(a));
-  const socials = acts.filter(isSocial);
+  const workshops = filterMode === 'parties' ? [] : actsStored.filter((a) => !isSocial(a));
+  const socialsRaw = actsStored.filter(isSocial);
 
   // Une ligne par activite. Si plusieurs niveaux sont detectes (ex "Beginner & Intermediate"),
   // on les combine en une seule etiquette : c'est UNE classe couvrant les 2 niveaux,
   // pas 2 classes paralleles.
-  const workshopRows = workshops.map((a) => {
+  // Dedup au rendu : le store peut contenir deux versions du meme creneau a des
+  // heures differentes (vieux flyer vs post recent) -> meme intitule decompose
+  // = une seule ligne.
+  const seenRows = new Set();
+  const workshopRows = [];
+  for (const a of workshops) {
     const d = decomposeWorkshop(a.name);
     // Abrege systematiquement les niveaux : "Beginner" -> "Beg" etc. + sans espace autour du "/".
     const lvls = d.levels.map((l) =>
@@ -399,8 +415,26 @@ function renderCard(ev) {
     );
     const levelLabel = lvls.length ? lvls.join('/') : '';
     const { left, meta } = makeWorkshopRow(d, levelLabel, a.name);
-    return { time: a.time, left, meta };
-  });
+    const rowKey = `${left.toLowerCase()}|${meta.toLowerCase()}`;
+    if (seenRows.has(rowKey)) continue;
+    seenRows.add(rowKey);
+    workshopRows.push({ time: a.time, left, meta });
+  }
+  workshopRows.sort((a, b) => timeKey(a.time) - timeKey(b.time));
+
+  // Socials : meme nom normalise = meme soiree (il ne peut pas y avoir deux fois
+  // la meme party le meme soir). On garde la version avec plage horaire (info la
+  // plus riche), sinon la premiere stockee.
+  const socialByName = new Map();
+  for (const s of socialsRaw) {
+    const key = (s.name || 'social').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    const prev = socialByName.get(key);
+    if (!prev) { socialByName.set(key, s); continue; }
+    const prevHasRange = (resolveRange(prev.time) || []).length > 1;
+    const curHasRange = (resolveRange(s.time) || []).length > 1;
+    if (curHasRange && !prevHasRange) socialByName.set(key, s);
+  }
+  const socials = [...socialByName.values()].sort((a, b) => timeKey(a.time) - timeKey(b.time));
 
   const workshopsHTML = workshopRows.length
     ? `<div>
@@ -533,33 +567,51 @@ function renderCalendar() {
   const cells = [];
   // Cases du mois precedent qui completent la 1ere semaine.
   for (let i = startOffset - 1; i >= 0; i--) {
-    const date = daysInPrev - i;
-    const dt = new Date(year, month - 1, date);
-    cells.push({ date, dayIdx: dt.getDay(), other: true, month: month - 1 });
+    const dt = new Date(year, month - 1, daysInPrev - i);
+    cells.push({ dt, other: true });
   }
   for (let d = 1; d <= daysInMonth; d++) {
-    const dt = new Date(year, month, d);
-    cells.push({ date: d, dayIdx: dt.getDay(), other: false, month });
+    cells.push({ dt: new Date(year, month, d), other: false });
   }
   // Completer 42 cases (6 semaines) avec le mois suivant.
   let nextDate = 1;
   while (cells.length < 42) {
-    const dt = new Date(year, month + 1, nextDate);
-    cells.push({ date: nextDate, dayIdx: dt.getDay(), other: true, month: month + 1 });
+    cells.push({ dt: new Date(year, month + 1, nextDate), other: true });
     nextDate++;
   }
 
+  const isSameDate = (a, b) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
   $calGrid.innerHTML = cells
     .map((c) => {
-      const count = countByDayIdx[c.dayIdx];
-      const isToday = !c.other && c.month === today.getMonth() && c.date === today.getDate() && year === today.getFullYear();
+      const dayIdx = c.dt.getDay();
+      const count = countByDayIdx[dayIdx];
+      const isToday = isSameDate(c.dt, today);
+      const isSelected = isSameDate(c.dt, calSelectedDate);
       const dots = '<span></span>'.repeat(Math.min(count, 3));
-      return `<button type="button" class="cal-day ${c.other ? 'is-other' : ''} ${count ? 'has-events' : ''} ${isToday ? 'is-today' : ''}" data-day="${c.dayIdx}" aria-label="${c.date} (${count} event${count > 1 ? 's' : ''})">
-        <span class="cd-num">${c.date}</span>
+      return `<button type="button" class="cal-day ${c.other ? 'is-other' : ''} ${count ? 'has-events' : ''} ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''}" data-day="${dayIdx}" data-date="${isoDate(c.dt)}" aria-pressed="${isSelected}" aria-label="${c.dt.getDate()} (${count} event${count > 1 ? 's' : ''})">
+        <span class="cd-num">${c.dt.getDate()}</span>
         ${count ? `<span class="cd-dots">${dots}</span>` : ''}
       </button>`;
     })
     .join('');
+}
+
+// Cards du jour selectionne, en scroll horizontal (vue Calendar).
+function renderCalDayCards() {
+  const dayIdx = calSelectedDate.getDay();
+  const evs = visibleEvents()
+    .filter((e) => e.dayIndex === dayIdx)
+    .sort((a, b) => firstActivityTimeKey(a) - firstActivityTimeKey(b));
+  $calDayLabel.textContent = `${DAYS_FULL[dayIdx]} ${calSelectedDate.getDate()}`;
+  $calDayCount.textContent = evs.length
+    ? `${evs.length} event${evs.length > 1 ? 's' : ''}`
+    : 'No events';
+  $calDayCards.innerHTML = evs.length
+    ? evs.map(renderCard).join('')
+    : `<div class="cal-day-empty">Nothing on this day.</div>`;
+  $calDayCards.scrollLeft = 0;
 }
 
 // ── Map (Leaflet bounded to Playa, geocoded venues, user position, OSRM walking) ──
@@ -754,6 +806,8 @@ function switchView(view) {
   // Mode plein ecran facon Google Maps : la carte devient le fond, header,
   // CTA filtres, legende et tabbar flottent au-dessus.
   document.body.classList.toggle('map-mode', view === 'map');
+  // Calendar plein hauteur : cards du jour en haut, grille du mois en bas.
+  document.body.classList.toggle('cal-mode', view === 'calendar');
   refresh();
 }
 
@@ -798,7 +852,7 @@ function refresh() {
   renderStyleChips();
   updateFilterCta();
   if (activeView === 'cards') renderCards();
-  else if (activeView === 'calendar') renderCalendar();
+  else if (activeView === 'calendar') { renderCalendar(); renderCalDayCards(); }
   else if (activeView === 'map') renderMap();
 }
 
@@ -879,8 +933,12 @@ $styleChips.addEventListener('click', (e) => {
 $calGrid.addEventListener('click', (e) => {
   const cell = e.target.closest('.cal-day');
   if (!cell) return;
+  // Selectionne le jour SANS quitter la vue : les cards du haut se mettent a jour.
+  const [y, m, d] = cell.dataset.date.split('-').map(Number);
+  calSelectedDate = new Date(y, m - 1, d);
   selectedDay = Number(cell.dataset.day);
-  switchView('cards');
+  renderCalendar();
+  renderCalDayCards();
 });
 
 document.getElementById('cal-prev').addEventListener('click', () => {

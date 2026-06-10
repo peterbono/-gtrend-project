@@ -671,6 +671,8 @@ main {
 }
 .cal-day.is-other { opacity: 0.35; }
 .cal-day.is-today { border-color: var(--accent); }
+.cal-day.is-selected .cd-num { color: #fff; }
+.cal-day.is-selected .cd-dots span { background: #fff; opacity: 0.9; }
 .cal-day .cd-num {
   font-size: 0.95rem;
   font-weight: 600;
@@ -693,6 +695,113 @@ main {
   border-radius: 50%;
   background: var(--accent);
   opacity: 0.85;
+}
+
+/* ── CALENDAR plein hauteur : cards du jour (haut) + grille (bas) ─── */
+.cal-day-head { display: none; }
+.cal-day-cards { display: none; }
+body.cal-mode { padding-bottom: 0; }
+body.cal-mode main { max-width: none; padding: 0; }
+body.cal-mode .calendar-view {
+  position: fixed;
+  inset: 0;
+  margin: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  padding-top: calc(max(18px, var(--safe-top)) + 58px);
+  padding-bottom: calc(96px + var(--safe-bottom));
+}
+body.cal-mode .cal-day-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 20px 10px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+}
+.cal-day-label {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.cal-day-count {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+body.cal-mode .cal-day-cards {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  padding: 4px 20px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+body.cal-mode .cal-day-cards::-webkit-scrollbar { display: none; }
+body.cal-mode .cal-day-cards .card {
+  flex: 0 0 86%;
+  max-width: 420px;
+  scroll-snap-align: center;
+  max-height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+body.cal-mode .cal-day-cards .card::-webkit-scrollbar { display: none; }
+.cal-day-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  font-size: 0.95rem;
+}
+body.cal-mode .cal-bottom {
+  flex: 0 0 auto;
+  padding: 14px 16px 0;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+}
+body.cal-mode .cal-bottom .cal-header { margin-bottom: 12px; }
+/* Grille compacte en bas : pas d'aspect-ratio carre, hauteur reduite. */
+body.cal-mode .cal-grid .cal-day {
+  aspect-ratio: auto;
+  min-height: 40px;
+  border-radius: 10px;
+  gap: 2px;
+}
+/* Jour selectionne : gradient orange, doit primer sur has-events/is-today
+   (place apres dans la cascade + prefixe body.cal-mode pour la specificite). */
+body.cal-mode .cal-grid .cal-day.is-selected {
+  background: linear-gradient(135deg, #ff7a3d 0%, #ff5a5f 100%);
+  border-color: transparent;
+  color: #fff;
+}
+/* Header sticky flotte au-dessus avec un scrim degrade. */
+body.cal-mode .top {
+  background: linear-gradient(to bottom, var(--bg) 60%, rgba(7, 8, 12, 0.6) 82%, transparent);
+}
+/* CTA filtres flottant sous le header, a droite. */
+body.cal-mode .filter-row {
+  position: fixed;
+  top: calc(max(18px, var(--safe-top)) + 48px);
+  right: 16px;
+  z-index: 11;
+  padding: 0;
+}
+body.cal-mode .filter-cta {
+  background: rgba(15, 17, 24, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 /* ── MAP VIEW (plein ecran facon Google Maps) ──────────── */
