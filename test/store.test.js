@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normTime, mergeActivities, isFreshEvent, isInScope } from '../src/store.js';
+import { normTime, mergeActivities, isFreshEvent, isInScope, isFreshActivity, mergeByTitle, titleMergeKey } from '../src/store.js';
 
 // ── normTime : meridiem colle, plages, points ────────────────────────────────
 
@@ -118,4 +118,72 @@ test('isInScope: defensif sur event vide ou sans venue/title', () => {
   assert.equal(isInScope({}), true);
   assert.equal(isInScope({ venue: null, title: null }), true);
   assert.equal(isInScope(undefined), true);
+});
+
+// ── isFreshActivity : fraicheur par activite ─────────────────────────────────
+
+const DAY = 24 * 60 * 60 * 1000;
+
+test('isFreshActivity: activite vue il y a < 14j -> garde', () => {
+  const now = Date.parse('2026-06-10T00:00:00Z');
+  const recent = new Date(now - 5 * DAY).toISOString();
+  assert.equal(isFreshActivity({ time: '9p', lastSeen: recent }, null, now), true);
+});
+
+test('isFreshActivity: activite vue il y a > 14j -> drop', () => {
+  const now = Date.parse('2026-06-10T00:00:00Z');
+  const old = new Date(now - 20 * DAY).toISOString();
+  assert.equal(isFreshActivity({ time: '9p', lastSeen: old }, null, now), false);
+});
+
+test('isFreshActivity: sans lastSeen propre -> herite du lastSeen de l\'event', () => {
+  const now = Date.parse('2026-06-10T00:00:00Z');
+  const recentEvent = new Date(now - 2 * DAY).toISOString();
+  const oldEvent = new Date(now - 30 * DAY).toISOString();
+  // legacy activite (pas de lastSeen) : suit l'event.
+  assert.equal(isFreshActivity({ time: '9p' }, recentEvent, now), true);
+  assert.equal(isFreshActivity({ time: '9p' }, oldEvent, now), false);
+});
+
+test('isFreshActivity: defensif si aucune date exploitable -> garde', () => {
+  const now = Date.parse('2026-06-10T00:00:00Z');
+  assert.equal(isFreshActivity({ time: '9p' }, null, now), true);
+  assert.equal(isFreshActivity({ time: '9p', lastSeen: 'nope' }, 'nope', now), true);
+});
+
+// ── mergeByTitle : fusion read-time des cards jumelles ───────────────────────
+
+test('mergeByTitle: meme jour + titre specifique -> une seule entry, venue la plus recente gagne', () => {
+  const events = [
+    { id: 'a', dayIndex: 5, title: 'LUSH Latin Dance Party', venue: 'the WAREHOUSE Av. 5 y C. 10',
+      lastSeen: '2026-06-08T00:00:00Z', mapUrl: null,
+      activities: [{ time: '7p', name: 'Salsa Class' }] },
+    { id: 'b', dayIndex: 5, title: 'LUSH  Latin Dance Party!', venue: 'the WAREHOUSE, AVENIDA 20',
+      lastSeen: '2026-06-09T00:00:00Z', mapUrl: 'https://maps.example/x',
+      activities: [{ time: '9PM-1AM', name: 'Social Dancing' }] },
+  ];
+  const out = mergeByTitle(events);
+  assert.equal(out.length, 1);
+  // la version la plus recente (b) sert de base : venue + mapUrl gagnent.
+  assert.equal(out[0].venue, 'the WAREHOUSE, AVENIDA 20');
+  assert.equal(out[0].mapUrl, 'https://maps.example/x');
+  // activites des deux entries unionnees.
+  assert.equal(out[0].activities.length, 2);
+});
+
+test('mergeByTitle: titre generique court -> NE fusionne PAS deux venues', () => {
+  const events = [
+    { id: 'a', dayIndex: 5, title: 'Salsa night', venue: 'Bar A', lastSeen: '2026-06-08T00:00:00Z', activities: [{ time: '9p', name: 'x' }] },
+    { id: 'b', dayIndex: 5, title: 'Salsa night', venue: 'Bar B', lastSeen: '2026-06-09T00:00:00Z', activities: [{ time: '9p', name: 'y' }] },
+  ];
+  assert.equal(titleMergeKey(events[0]), null); // 2 mots, < 15 chars
+  assert.equal(mergeByTitle(events).length, 2);
+});
+
+test('mergeByTitle: jours differents ne fusionnent pas malgre meme titre', () => {
+  const events = [
+    { id: 'a', dayIndex: 4, title: 'LUSH Latin Dance Party', venue: 'X', lastSeen: '2026-06-08T00:00:00Z', activities: [{ time: '9p', name: 'x' }] },
+    { id: 'b', dayIndex: 5, title: 'LUSH Latin Dance Party', venue: 'Y', lastSeen: '2026-06-09T00:00:00Z', activities: [{ time: '9p', name: 'y' }] },
+  ];
+  assert.equal(mergeByTitle(events).length, 2);
 });
