@@ -16,6 +16,13 @@ const KEY = 'playa:events';
 // Les events hebdomadaires recurrents sont re-vus chaque semaine, donc jamais filtres.
 const MAX_EVENT_AGE_DAYS = 10;
 
+// Fraicheur PAR ACTIVITE : une activite jamais revue depuis ce nombre de jours
+// est droppee a la lecture. Le bug prod : un vieux flyer (classes 5p/6p) et le
+// post courant (19:00/20:00) coexistent dans le meme event car mergeActivities
+// dedupe par (heure|style|niveau) — la meme classe a une autre heure passe a
+// travers et ne meurt jamais. Le TTL par activite laisse mourir l'ancien horaire.
+const MAX_ACTIVITY_AGE_DAYS = 14;
+
 const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 const useRedis = Boolean(REDIS_URL && REDIS_TOKEN);
@@ -28,23 +35,30 @@ async function redis() {
   return _redis;
 }
 
+// Hook test/dev : PLAYA_DATA_FILE force le mode fichier local (jamais defini
+// en prod), ce qui permet aux tests d'ecrire dans un fichier temporaire sans
+// risquer de toucher Redis ni data/events.json.
+function dataFile() {
+  return process.env.PLAYA_DATA_FILE || FILE;
+}
+
 function loadFile() {
   try {
-    return JSON.parse(fs.readFileSync(FILE, 'utf8'));
+    return JSON.parse(fs.readFileSync(dataFile(), 'utf8'));
   } catch {
     return {};
   }
 }
 
 async function readMap() {
-  if (useRedis) return (await (await redis()).get(KEY)) || {};
+  if (useRedis && !process.env.PLAYA_DATA_FILE) return (await (await redis()).get(KEY)) || {};
   return loadFile();
 }
 
 async function writeMap(map) {
-  if (useRedis) return void (await (await redis()).set(KEY, map));
-  fs.mkdirSync(path.dirname(FILE), { recursive: true });
-  fs.writeFileSync(FILE, JSON.stringify(map, null, 2));
+  if (useRedis && !process.env.PLAYA_DATA_FILE) return void (await (await redis()).set(KEY, map));
+  fs.mkdirSync(path.dirname(dataFile()), { recursive: true });
+  fs.writeFileSync(dataFile(), JSON.stringify(map, null, 2));
 }
 
 // Heuristique : entre deux valeurs candidates pour title/venue, garde la plus informative.
@@ -170,6 +184,24 @@ function styleLevelKey(act) {
   return `${normTime(act.time)}|${style}|${level}`;
 }
 
+// Entre deux timestamps lastSeen, garde le plus recent. Defensif : si l'un
+// est absent/illisible on garde l'autre ; si les deux sont absents -> null
+// (withSeen n'ajoutera alors pas de cle).
+function laterSeen(a, b) {
+  const ta = Date.parse(a || '');
+  const tb = Date.parse(b || '');
+  if (Number.isNaN(ta) && Number.isNaN(tb)) return a || b || null;
+  if (Number.isNaN(tb)) return a;
+  if (Number.isNaN(ta)) return b;
+  return tb > ta ? b : a;
+}
+
+// Attache un lastSeen a une activite SANS jamais creer de cle undefined
+// (les activites legacy sans lastSeen restent sans la cle).
+function withSeen(act, seen) {
+  return seen ? { ...act, lastSeen: seen } : act;
+}
+
 export function mergeActivities(a = [], b = []) {
   const all = [...(a || []), ...(b || [])];
   const out = [];
@@ -185,7 +217,8 @@ export function mergeActivities(a = [], b = []) {
         const prev = out[idx];
         const time = (act.time || '').length > (prev.time || '').length ? act.time : prev.time;
         const name = (act.name || '').length > (prev.name || '').length ? act.name : prev.name;
-        out[idx] = { time, name };
+        // Un duplicat = la meme activite revue -> on rafraichit son lastSeen.
+        out[idx] = withSeen({ time, name }, laterSeen(prev.lastSeen, act.lastSeen));
         continue;
       }
       out.push(act);
@@ -193,13 +226,16 @@ export function mergeActivities(a = [], b = []) {
       continue;
     }
     const exactKey = `${normTime(act.time)}|${(act.name || '').toLowerCase().trim().replace(/\s+/g, ' ')}`;
-    if (seenWorkshops.has(exactKey)) continue;
+    if (seenWorkshops.has(exactKey)) {
+      const idx = seenWorkshops.get(exactKey);
+      out[idx] = withSeen(out[idx], laterSeen(out[idx].lastSeen, act.lastSeen));
+      continue;
+    }
     const semKey = styleLevelKey(act);
     if (semKey && seenSemantic.has(semKey)) {
       const idx = seenSemantic.get(semKey);
-      if ((act.name || '').length > (out[idx].name || '').length) {
-        out[idx] = act;
-      }
+      const keep = (act.name || '').length > (out[idx].name || '').length ? act : out[idx];
+      out[idx] = withSeen(keep, laterSeen(out[idx].lastSeen, act.lastSeen));
       continue;
     }
     out.push(act);
@@ -223,17 +259,42 @@ export function mergeActivities(a = [], b = []) {
       const aSubC = isSubsetOrEqual(a, c);
       const cSubA = isSubsetOrEqual(c, a);
       if (aSubC && cSubA) {
-        // sets equivalents -> garde le name le plus long.
-        if ((a.name || '').length > (c.name || '').length) cleaned[i] = a;
+        // sets equivalents -> garde le name le plus long, lastSeen le plus recent.
+        const keep = (a.name || '').length > (c.name || '').length ? a : c;
+        cleaned[i] = withSeen(keep, laterSeen(a.lastSeen, c.lastSeen));
         drop = true;
         break;
       }
-      if (aSubC) { drop = true; break; }                // a domine -> drop a
-      if (cSubA) { cleaned[i] = a; drop = true; break; } // c domine -> a remplace c
+      // a domine -> drop a (mais c vient d'etre revu -> refresh)
+      if (aSubC) { cleaned[i] = withSeen(c, laterSeen(a.lastSeen, c.lastSeen)); drop = true; break; }
+      // c domine -> a remplace c
+      if (cSubA) { cleaned[i] = withSeen(a, laterSeen(a.lastSeen, c.lastSeen)); drop = true; break; }
     }
     if (!drop) cleaned.push(a);
   }
   return cleaned;
+}
+
+// Cle de fusion par titre : le meme event reel poste sous deux orthographes de
+// lieu ("the WAREHOUSE, AVENIDA 20..." vs "the WAREHOUSE Av. 5 y C. 10") cree
+// deux entries car venueKey diverge — mais le titre exact est partage
+// ("LUSH Latin Dance Party"). On fusionne par (dayIndex, titre normalise),
+// UNIQUEMENT si le titre est assez specifique (>= 3 mots ou >= 15 caracteres) :
+// deux venues differentes qui postent un generique "Salsa night" ne doivent
+// PAS fusionner. Titre vide/absent -> jamais de fusion (retourne null).
+export function titleMergeKey(ev) {
+  const t = (ev?.title || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '') // accent-fold : "Fiesta Cubaña" -> "cubana"
+    .replace(/&/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ') // strip ponctuation : "party!" == "party"
+    .replace(/\b(y|and)\b/g, ' ') // "Salsa y Bachata" == "Salsa & Bachata" == "Salsa and Bachata"
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t) return null;
+  if (t.split(' ').length < 3 && t.length < 15) return null; // trop generique
+  return `${ev.dayIndex}|${t}`;
 }
 
 function mergeEvent(prev, incoming, meta) {
@@ -250,27 +311,46 @@ function mergeEvent(prev, incoming, meta) {
 
 // Insere ou met a jour les evenements. Dedup par (dayIndex, venueKey) : deux messages
 // referencant le meme lieu sous des noms differents se fusionnent en un seul event.
+// Index secondaire par (dayIndex, titre normalise specifique) : le meme event reel
+// poste avec une orthographe de lieu differente (venueKey divergent) atterrit
+// quand meme sur l'entry existante au lieu d'en creer une deuxieme.
 export async function upsertMany(events, meta = {}) {
   if (!events.length) return [];
   const map = await readMap();
   const now = new Date().toISOString();
 
-  // Index secondaire : (dayIndex, venueKey) -> id existant.
+  // Index secondaires : (dayIndex, venueKey) -> id, puis (dayIndex, titre) -> id.
   const byVenue = new Map();
+  const byTitle = new Map();
   for (const [id, ev] of Object.entries(map)) {
     const vk = venueKey(ev);
     if (vk) byVenue.set(`${ev.dayIndex}|${vk}`, id);
+    const tk = titleMergeKey(ev);
+    if (tk) byTitle.set(tk, id);
   }
 
   const saved = [];
   for (const ev of events) {
     const vk = venueKey(ev);
     const venueIdx = vk ? `${ev.dayIndex}|${vk}` : null;
-    const candidateId = (venueIdx && byVenue.get(venueIdx)) || eventId(ev);
+    const titleIdx = titleMergeKey(ev);
+    const candidateId =
+      (venueIdx && byVenue.get(venueIdx)) || (titleIdx && byTitle.get(titleIdx)) || eventId(ev);
     const prev = map[candidateId];
 
+    // Chaque activite vue dans le message entrant est estampillee lastSeen = now ;
+    // une activite deja en store garde son propre lastSeen (refresh uniquement si
+    // un duplicat entrant la matche, via laterSeen dans mergeActivities).
+    const incomingActs = (ev.activities || []).map((a) => ({ ...a, lastSeen: now }));
+
     if (prev) {
-      const merged = mergeEvent(prev, ev, meta);
+      // Backfill des activites legacy sans lastSeen : on leur donne le lastSeen
+      // de l'EVENT (= derniere fois ou elles ont pu etre vues). C'est ce qui
+      // permet aux vieux horaires de s'eteindre au fil des upserts futurs.
+      const prevActs = (prev.activities || []).map((a) =>
+        a.lastSeen ? a : withSeen(a, prev.lastSeen || now)
+      );
+      const merged = mergeEvent({ ...prev, activities: prevActs }, { ...ev, activities: incomingActs }, meta);
       map[candidateId] = {
         ...merged,
         id: candidateId,
@@ -283,12 +363,13 @@ export async function upsertMany(events, meta = {}) {
       map[candidateId] = {
         id: candidateId,
         ...ev,
-        activities: mergeActivities(ev.activities, []),
+        activities: mergeActivities(incomingActs, []),
         source: meta.source || 'text',
         firstSeen: now,
         lastSeen: now,
       };
       if (venueIdx) byVenue.set(venueIdx, candidateId);
+      if (titleIdx) byTitle.set(titleIdx, candidateId);
     }
     saved.push(map[candidateId]);
   }
@@ -345,11 +426,56 @@ export function isInScope(ev) {
   return !mentionsOtherCity(ev?.venue) && !mentionsOtherCity(ev?.title);
 }
 
+// Fraicheur par activite : un vieil horaire (flyer perime) jamais reconfirme
+// depuis MAX_ACTIVITY_AGE_DAYS disparait, meme si l'event reste actif via
+// d'autres creneaux. Defensif : une activite sans lastSeen herite du lastSeen
+// de l'EVENT (donc les donnees legacy sont gardees aujourd'hui et s'eteignent
+// au fil des upserts futurs) ; rien d'exploitable -> on garde.
+export function isFreshActivity(act, eventLastSeen, now = Date.now()) {
+  const stamp = act?.lastSeen || eventLastSeen;
+  const seen = Date.parse(stamp || '');
+  if (Number.isNaN(seen)) return true;
+  return now - seen <= MAX_ACTIVITY_AGE_DAYS * 24 * 60 * 60 * 1000;
+}
+
+// Fusion A LA LECTURE des events de meme (jour, titre specifique) : repare les
+// donnees DEJA stockees en double (meme event poste sous deux orthographes de
+// lieu -> deux entries car venueKey diverge). Pas de reecriture du store, le
+// fix s'applique instantanement aux donnees existantes. Le plus recemment vu
+// sert de base (venue/mapUrl/price), les activites du groupe sont unionnees.
+export function mergeByTitle(events) {
+  const groups = new Map();
+  const passthrough = [];
+  for (const ev of events) {
+    const k = titleMergeKey(ev);
+    if (!k) { passthrough.push(ev); continue; }
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(ev);
+  }
+  const merged = [];
+  for (const group of groups.values()) {
+    if (group.length === 1) { merged.push(group[0]); continue; }
+    const sorted = group.slice().sort(
+      (a, b) => (Date.parse(b.lastSeen || '') || 0) - (Date.parse(a.lastSeen || '') || 0)
+    );
+    const base = sorted[0];
+    const activities = sorted.reduce((acc, ev) => mergeActivities(acc, ev.activities || []), []);
+    merged.push({ ...base, activities });
+  }
+  return [...merged, ...passthrough];
+}
+
 export async function allEvents() {
   const map = await readMap();
-  return Object.values(map)
-    .filter((ev) => isFreshEvent(ev) && isInScope(ev))
-    .sort((a, b) => a.dayIndex - b.dayIndex);
+  const now = Date.now();
+  const events = Object.values(map)
+    .filter((ev) => isFreshEvent(ev, now) && isInScope(ev))
+    .map((ev) => ({
+      ...ev,
+      activities: (ev.activities || []).filter((a) => isFreshActivity(a, ev.lastSeen, now)),
+    }))
+    .filter((ev) => (ev.activities || []).length > 0);
+  return mergeByTitle(events).sort((a, b) => a.dayIndex - b.dayIndex);
 }
 
 export async function eventsForDay(dayIndex) {
