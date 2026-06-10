@@ -51,13 +51,11 @@ jobs:
           restore-keys: |
             wwebjs-auth-
 
-      - name: Fail fast if no session
-        if: steps.restore-session.outputs.cache-matched-key == ''
-        run: |
-          echo "::error::Aucune session .wwebjs_auth dans le cache. Lance le workflow seed-session d'abord."
-          exit 1
-
+      # Session expiree/absente = etat attendu (l'alerte est geree par le
+      # listener cron horaire). On ne marque pas ce run en rouge ; seul un vrai
+      # crash le fait. needs_relink coupe aussi la sauvegarde du cache.
       - name: Run backfill
+        id: backfill
         env:
           GROUP_NAME: ${{ vars.GROUP_NAME || 'PDC Dance Socials' }}
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
@@ -70,10 +68,28 @@ jobs:
           BACKFILL_HOURS: ${{ inputs.hours || '36' }}
           BACKFILL_LIMIT: ${{ inputs.limit || '300' }}
           READY_TIMEOUT_SECONDS: "240"
-        run: node src/backfill.js
+        run: |
+          set +e
+          if [ -z "${{ steps.restore-session.outputs.cache-matched-key }}" ]; then
+            echo "needs_relink=1" >> "$GITHUB_OUTPUT"
+            echo "::warning::Aucune session .wwebjs_auth en cache — bootstrap requis (voir l'issue du listener)."
+            exit 0
+          fi
+          node src/backfill.js
+          code=$?
+          if [ "$code" -eq 0 ]; then
+            exit 0
+          elif [ "$code" -eq 75 ]; then
+            echo "needs_relink=1" >> "$GITHUB_OUTPUT"
+            echo "::warning::Session WhatsApp expiree — re-link requis (voir l'issue du listener)."
+            exit 0
+          else
+            echo "::error::Backfill crashe (exit $code)."
+            exit "$code"
+          fi
 
       - name: Save WhatsApp session cache
-        if: always() && hashFiles('.wwebjs_auth/**') != ''
+        if: always() && steps.backfill.outputs.needs_relink != '1' && hashFiles('.wwebjs_auth/**') != ''
         uses: actions/cache/save@v4
         with:
           path: .wwebjs_auth

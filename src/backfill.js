@@ -46,7 +46,9 @@ const readyTimer = setTimeout(() => {
 
 client.on('qr', () => {
   console.error('[backfill] QR demande : session manquante ou expiree dans le cache.');
-  shutdown('qr-required', 2);
+  // Exit 75 = re-link requis (etat attendu, pas un crash) : le workflow ne
+  // marque pas le run en rouge, l'alerte est geree par le listener cron.
+  shutdown('qr-required', 75);
 });
 
 client.on('ready', async () => {

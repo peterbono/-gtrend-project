@@ -12,6 +12,11 @@ const RUN_DURATION_MS = Number(process.env.RUN_DURATION_SECONDS || 480) * 1000;
 const READY_TIMEOUT_MS = Number(process.env.READY_TIMEOUT_SECONDS || 90) * 1000;
 const ALLOW_LINK = process.env.ALLOW_LINK === '1';
 
+// Code de sortie sentinel : "la session WhatsApp a expire, re-link requis".
+// Distinct d'un vrai crash (1) pour que le workflow CI ne marque pas le run en
+// echec rouge a chaque heure pour un etat attendu — il ouvre une alerte a la place.
+const EXIT_RELINK_REQUIRED = 75;
+
 let client = null;
 let stopping = false;
 
@@ -41,7 +46,7 @@ client = startListener({
       console.error('[cron] QR demande : pas d\'auth interactive en CI.');
       console.error('[cron] Bootstrap : lancer le workflow "bootstrap" avec LINK_PHONE.');
     }
-    shutdown('qr-required', 2);
+    shutdown('qr-required', EXIT_RELINK_REQUIRED);
   },
   onPairingCode: (code) => {
     if (ALLOW_LINK) {
@@ -53,7 +58,7 @@ client = startListener({
       return;
     }
     console.error(`[cron] code de liaison emis (${code}) hors mode bootstrap : on quitte.`);
-    shutdown('pairing-required', 2);
+    shutdown('pairing-required', EXIT_RELINK_REQUIRED);
   },
   onReady: () => {
     clearTimeout(readyTimer);

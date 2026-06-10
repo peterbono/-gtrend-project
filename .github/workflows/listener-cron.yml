@@ -24,6 +24,7 @@ concurrency:
 permissions:
   contents: read
   actions: write
+  issues: write
 
 jobs:
   listen:
@@ -48,13 +49,11 @@ jobs:
           restore-keys: |
             wwebjs-auth-
 
-      - name: Fail fast if no seeded session
-        if: steps.restore-session.outputs.cache-matched-key == ''
-        run: |
-          echo "::error::Aucune session .wwebjs_auth dans le cache. Bootstrap requis : voir README (scan QR local + push du cache GH)."
-          exit 1
-
+      # Le run ne devient ROUGE que pour un vrai crash. Une session expiree
+      # (QR requis) ou absente est un etat attendu -> run vert + flag needs_relink
+      # qui declenche une alerte (issue GitHub) au lieu d'un echec recurrent.
       - name: Run listener window
+        id: listener
         env:
           GROUP_NAME: ${{ vars.GROUP_NAME || 'PDC Dance Socials' }}
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
@@ -66,10 +65,68 @@ jobs:
           PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
           RUN_DURATION_SECONDS: ${{ inputs.run_duration_seconds || '480' }}
           READY_TIMEOUT_SECONDS: '90'
-        run: node src/cron-run.js
+        run: |
+          set +e
+          if [ -z "${{ steps.restore-session.outputs.cache-matched-key }}" ]; then
+            echo "needs_relink=1" >> "$GITHUB_OUTPUT"
+            echo "::warning::Aucune session .wwebjs_auth en cache — bootstrap requis."
+            exit 0
+          fi
+          node src/cron-run.js
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" -eq 0 ]; then
+            exit 0
+          elif [ "$code" -eq 75 ]; then
+            echo "needs_relink=1" >> "$GITHUB_OUTPUT"
+            echo "::warning::Session WhatsApp expiree — re-link requis (workflow Bootstrap)."
+            exit 0
+          else
+            echo "::error::Listener crashe (exit $code)."
+            exit "$code"
+          fi
 
+      # Alerte : ouvre (ou rafraichit) UNE issue quand un re-link est requis.
+      # Dedup par titre pour ne pas spammer une issue par heure.
+      - name: Open/refresh re-link alert
+        if: steps.listener.outputs.needs_relink == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="⚠️ WhatsApp session needs re-linking"
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          existing=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "Toujours hors-ligne au run $run_url ($(date -u '+%Y-%m-%d %H:%M UTC')). Aucun nouvel event ingere."
+          else
+            gh issue create --title "$title" \
+              --body "$(printf '%s\n' \
+                "Le cron WhatsApp est en etat **QR requis** : la session de l'appareil lie a expire." \
+                "" \
+                "**Impact** : le site reste en ligne (events deja en base), mais plus aucun nouveau message n'est ingere jusqu'au re-link." \
+                "" \
+                "**Fix** : lancer le workflow **Bootstrap WhatsApp session** (scan QR / code de liaison), puis pousser le cache .wwebjs_auth regenere. Le cron horaire reprend tout seul et fermera cette issue automatiquement." \
+                "" \
+                "Run declencheur : $run_url")"
+          fi
+
+      # Auto-recovery : si la session refonctionne, ferme l'alerte ouverte.
+      - name: Close re-link alert on recovery
+        if: steps.listener.outputs.needs_relink != '1' && steps.listener.outputs.exit_code == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="⚠️ WhatsApp session needs re-linking"
+          n=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$n" ]; then
+            gh issue comment "$n" --body "✅ Session de nouveau saine (run ${{ github.run_id }}). Fermeture automatique."
+            gh issue close "$n"
+          fi
+
+      # On NE sauve PAS le cache quand la session est morte : ca ecraserait une
+      # session fraiche (re-link) par une session expiree sous une cle plus recente.
       - name: Save WhatsApp session cache
-        if: always() && hashFiles('.wwebjs_auth/**') != ''
+        if: always() && steps.listener.outputs.needs_relink != '1' && hashFiles('.wwebjs_auth/**') != ''
         uses: actions/cache/save@v4
         with:
           path: .wwebjs_auth
