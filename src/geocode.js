@@ -127,6 +127,20 @@ const KNOWN = {
   'mexcalli': { lat: 20.6286, lon: -87.0719 },
   // STEP DANCE : Av 45 Sur y Calle 1 Bis Sur (zone sud)
   'step dance': { lat: 20.6240, lon: -87.0834 },
+  // ON STAGE academia (Escuela Danza On Stage) : Calle 24 Norte entre Av 30 et 35
+  'on stage': { lat: 20.6345, lon: -87.0735 },
+  // Coin Av 10 Norte x Calle 34 Norte (adresse brute frequente dans les annonces)
+  'av 10 con calle 34': { lat: 20.6345, lon: -87.0681 },
+  // HOM Hostel Boutique : Calle 26 Norte entre Av 20 et 25
+  'hom hostel': { lat: 20.6342, lon: -87.0719 },
+  // Raices Mixology Bar : Calle Corazon, 5ta Av entre Calle 12 et 14
+  'raices mixology': { lat: 20.6279, lon: -87.0717 },
+  // The Fives Downtown Hotel & Residences : Calle 2 Norte esquina Av 10
+  'fives downtown': { lat: 20.6241, lon: -87.0755 },
+  // Cache Boutique Hotel : Calle 10 Norte esquina Av 15
+  'cache boutique': { lat: 20.6279, lon: -87.0740 },
+  // NB : "La Fonda de la Tulum" volontairement ABSENTE — c'est un resto de
+  // CANCUN (Av Tulum y Retorno Azucenas, ~21.16,-86.83), hors zone Playa.
 };
 // Matching flou : les venues stockees arrivent avec du bruit ("the WAREHOUSE
 // Av. 5 y C. 10", "STEP DANCE STUDIO PLAYA DEL CARMEN", "Nos vemos en Mexcalli").
