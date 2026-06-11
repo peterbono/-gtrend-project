@@ -61,6 +61,25 @@ button { font: inherit; cursor: pointer; }
   margin-inline: auto;
 }
 
+/* Wordmark : masque en mobile (la caption porte la date), affiche en desktop. */
+.brand {
+  display: none;
+  align-items: center;
+  gap: 9px;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.brand-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff7a3d 0%, #ff5a5f 100%);
+  box-shadow: 0 0 12px -2px rgba(255, 122, 61, 0.8);
+  flex-shrink: 0;
+}
+
 /* ── FILTER CTA + DRAWER ───────────────────────────────── */
 /* CTA dans le contenu, au-dessus de la ligne "Tuesday · N events" ;
    les controles vivent dans un bottom drawer. */
@@ -438,12 +457,12 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(0,0,0,0.45);
+  background: rgba(0,0,0,0.5);
   color: #fff;
   font-weight: 700;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   line-height: 1;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 0 11px;
   min-height: 26px;
@@ -536,11 +555,11 @@ main {
 /* ── SCHEDULE (workshops + social) ─────────────────────── */
 .schedule { display: flex; flex-direction: column; gap: 14px; }
 .sched-label {
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.7);
+  color: rgba(255,255,255,0.82);
   margin-bottom: 6px;
 }
 .sched-list { list-style: none; display: flex; flex-direction: column; }
@@ -574,10 +593,10 @@ main {
 .sched-list .meta {
   display: inline;
   margin-left: 8px;
-  font-size: 0.66rem;
+  font-size: 0.7rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.62);
+  color: rgba(255,255,255,0.85);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -605,11 +624,11 @@ a.social-box.is-link {
 a.social-box.is-link:hover .sb-arrow { background: rgba(255,255,255,0.28); }
 .social-box .sb-meta { display: flex; flex-direction: column; gap: 2px; }
 .social-box .sb-label {
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-weight: 700;
-  color: rgba(255,255,255,0.75);
+  color: rgba(255,255,255,0.88);
 }
 .social-box .sb-time {
   font-variant-numeric: tabular-nums;
@@ -1152,26 +1171,33 @@ body.map-mode .leaflet-bottom.leaflet-left { margin-bottom: calc(86px + var(--sa
 @media (min-width: 880px) {
   body { padding-bottom: 0; }
 
-  /* Conteneur elargi (les blocs cales a 720 passent a 1180). */
+  /* Conteneur elargi (1240 -> grille 3-up/4-up). */
   .head-row,
-  .caption,
-  .day-strip,
   main,
-  .filter-row { max-width: 1180px; }
+  .filter-row { max-width: 1240px; }
   main { padding: 18px 32px 64px; }
 
-  /* En-tete sticky : la barre des jours respire, separateur bas subtil. */
+  /* En-tete : wordmark a gauche, la caption-date redondante saute (le titre
+     de section "Wednesday · N events" porte deja la date). */
   .top {
     padding: max(18px, var(--safe-top)) 32px 14px;
     border-bottom: 1px solid var(--border);
   }
-  .day-strip { gap: 8px; }
-  .day-strip button { min-height: 60px; }
+  .brand { display: inline-flex; max-width: 1240px; margin: 0 auto 12px; }
+  .caption { display: none; }
+
+  /* Barre des jours : capee et alignee a gauche (plus de cellules geantes). */
+  .day-strip {
+    max-width: 620px;
+    margin: 0 auto 0 0;
+    gap: 8px;
+  }
+  .day-strip button { min-height: 56px; }
 
   /* Tabbar = nav en haut a droite (plus de pill flottante en bas). */
   .tabbar {
     position: fixed;
-    top: max(14px, var(--safe-top));
+    top: max(16px, var(--safe-top));
     right: 32px;
     bottom: auto;
     left: auto;
@@ -1182,20 +1208,24 @@ body.map-mode .leaflet-bottom.leaflet-left { margin-bottom: calc(86px + var(--sa
   /* Liste : jours empiles, chaque jour = grille de cards (header pleine ligne). */
   .day-section {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 16px;
     align-items: start;
   }
   .day-section-header,
   .day-empty { grid-column: 1 / -1; }
   .card { max-width: none; }
+  /* Badge "10 WED" redondant quand la vue est deja scopee a un jour. */
+  .day-section .day-badge,
+  .cal-day-cards .day-badge { display: none; }
 
-  /* Filters retrouve son libelle (plus d'espace qu'en mobile). */
+  /* Toggle d'affichage + Filters regroupes a droite, sur une seule ligne. */
+  .filter-row { justify-content: flex-end; gap: 12px; }
   .filter-cta .fc-label { display: inline; }
 
   /* ── MAP : panneau contenu, pas plein ecran ── */
   body.map-mode { padding-bottom: 0; }
-  body.map-mode main { max-width: 1180px; padding: 18px 32px 64px; }
+  body.map-mode main { max-width: 1240px; padding: 18px 32px 64px; }
   body.map-mode .top {
     background: linear-gradient(to bottom, var(--bg) 78%, transparent);
   }
@@ -1215,7 +1245,8 @@ body.map-mode .leaflet-bottom.leaflet-left { margin-bottom: calc(86px + var(--sa
   }
   body.map-mode .map-legend {
     position: static; transform: none; left: auto; bottom: auto;
-    margin: 14px auto 0; box-shadow: none;
+    width: max-content; margin: 14px 0 0; padding: 0; box-shadow: none;
+    justify-content: flex-start;
   }
   body.map-mode .leaflet-bottom.leaflet-right,
   body.map-mode .leaflet-bottom.leaflet-left { margin-bottom: 10px; }
@@ -1223,7 +1254,7 @@ body.map-mode .leaflet-bottom.leaflet-left { margin-bottom: calc(86px + var(--sa
   /* ── CALENDAR (Par date) : mois a gauche, events du jour a droite ── */
   body.cal-mode { padding-bottom: 0; }
   body.cal-mode .top { display: block; }
-  body.cal-mode main { max-width: 1180px; padding: 18px 32px 64px; }
+  body.cal-mode main { max-width: 1240px; padding: 18px 32px 64px; }
   body.cal-mode .filter-row {
     position: static; top: auto; right: auto; padding: 2px 4px 0;
   }
@@ -1234,9 +1265,9 @@ body.map-mode .leaflet-bottom.leaflet-left { margin-bottom: calc(86px + var(--sa
   body.cal-mode .calendar-view {
     position: static; inset: auto; margin: 0; padding: 0; z-index: auto;
     display: grid;
-    grid-template-columns: minmax(360px, 0.85fr) 1.15fr;
+    grid-template-columns: minmax(320px, 0.7fr) 1.3fr;
     grid-template-rows: auto 1fr;
-    gap: 6px 32px;
+    gap: 6px 36px;
     align-items: start;
   }
   body.cal-mode .cal-bottom {
@@ -1259,6 +1290,11 @@ body.map-mode .leaflet-bottom.leaflet-left { margin-bottom: calc(86px + var(--sa
   body.cal-mode .cal-month-label { font-size: 1.2rem; }
 
   /* ── DRAWERS / FICHE : modale centree au lieu d'un bottom sheet ── */
+  .fd-backdrop, .es-backdrop {
+    background: rgba(4, 5, 8, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
   .fd-sheet, .es-sheet {
     top: 50%; bottom: auto; left: 50%;
     transform: translate(-50%, -48%);
@@ -1271,4 +1307,6 @@ body.map-mode .leaflet-bottom.leaflet-left { margin-bottom: calc(86px + var(--sa
     transform: translate(-50%, -50%); opacity: 1;
   }
   .fd-handle, .es-handle { display: none; }
+  /* Primary domine : Done plus large que Reset. */
+  .fd-actions .fd-done { flex: 1.6; }
 }

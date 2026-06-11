@@ -365,11 +365,15 @@ function firstActivityTimeKey(ev) {
 }
 
 // ── Day strip ─────────────────────────────────────────────
+// Fenetre glissante de 7 jours A PARTIR D'AUJOURD'HUI (dates monotones : 10, 11,
+// ... 16), pas un calendrier lundi-first qui melangeait cette semaine et la
+// suivante (15, 16, 10, 11...). Aujourd'hui est libelle "Today".
 function renderDayStrip() {
-  $strip.innerHTML = WEEK_ORDER.map((i) => {
-    const label = DAYS_SHORT[i];
-    const active = i === selectedDay;
+  const order = Array.from({ length: 7 }, (_, k) => (todayDayIndex + k) % 7);
+  $strip.innerHTML = order.map((i) => {
     const isToday = i === todayDayIndex;
+    const label = isToday ? 'Today' : DAYS_SHORT[i];
+    const active = i === selectedDay;
     const num = dateOfWeekday(i);
     return `<button type="button" data-day="${i}" class="${active ? 'active' : ''} ${isToday ? 'is-today' : ''}" aria-pressed="${active}" aria-label="${DAYS_FULL[i]} ${num}">
       <span class="ds-name">${label}</span>
@@ -721,7 +725,10 @@ function renderCalendar() {
     .join('');
 }
 
-// Cards du jour selectionne, en scroll horizontal (vue Calendar).
+// Cards du jour selectionne. Mobile : cards compactes en scroll horizontal,
+// tap -> fiche detail (l'espace manque). Desktop : la colonne de droite a la
+// place -> on rend la card PLEINE directement, pas de "View details".
+const isDesktop = () => matchMedia('(min-width: 880px)').matches;
 function renderCalDayCards() {
   const dayIdx = calSelectedDate.getDay();
   const evs = visibleEvents()
@@ -731,8 +738,9 @@ function renderCalDayCards() {
   $calDayCount.textContent = evs.length
     ? `${evs.length} event${evs.length > 1 ? 's' : ''}`
     : 'No events';
+  const render = isDesktop() ? renderCard : renderCompactCard;
   $calDayCards.innerHTML = evs.length
-    ? evs.map(renderCompactCard).join('')
+    ? evs.map(render).join('')
     : `<div class="cal-day-empty">Nothing on this day.</div>`;
   $calDayCards.scrollLeft = 0;
 }
@@ -914,7 +922,11 @@ async function renderMap() {
     const group = L.featureGroup([...mapMarkers, ...(userMarker ? [userMarker] : [])]);
     mapInstance.fitBounds(group.getBounds().pad(0.2), { maxZoom: 16 });
   }
-  setTimeout(() => mapInstance.invalidateSize(), 100);
+  // Plusieurs recalages : le conteneur (contenu sur desktop) peut n'avoir sa
+  // taille finale qu'apres le layout -> sinon les tiles ne remplissent pas.
+  requestAnimationFrame(() => mapInstance.invalidateSize());
+  setTimeout(() => mapInstance.invalidateSize(), 120);
+  setTimeout(() => mapInstance.invalidateSize(), 400);
 }
 
 // ── View switching ────────────────────────────────────────
@@ -1123,6 +1135,18 @@ document.getElementById('cal-next').addEventListener('click', () => {
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') load();
+});
+
+// Au franchissement du breakpoint desktop/mobile, re-rend la vue Par date
+// (cards pleines <-> compactes) et recale la map.
+let wasDesktop = isDesktop();
+window.addEventListener('resize', () => {
+  const now = isDesktop();
+  if (now !== wasDesktop) {
+    wasDesktop = now;
+    if (activeView === 'calendar') renderCalDayCards();
+  }
+  if (activeView === 'map' && mapInstance) mapInstance.invalidateSize();
 });
 
 // Applique le mode d'affichage memorise (liste ou par date) au demarrage.
