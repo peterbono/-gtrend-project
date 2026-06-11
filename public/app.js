@@ -45,7 +45,15 @@ const SUBSTYLE_RE = /\b(tradicional|dominicana|moderna|sensual|urbana|figuras\s+
 const today = new Date();
 const todayDayIndex = today.getDay();
 let selectedDay = todayDayIndex;
+// Onglet : 'cards'|'calendar' = onglet Events (2 modes d'affichage), 'map' = onglet Map.
 let activeView = 'cards';
+// Mode d'affichage des events dans l'onglet Events : 'cards' (liste verticale)
+// ou 'calendar' (par date, scroll horizontal). Memorise.
+let displayMode = 'cards';
+try {
+  if (localStorage.getItem('displayMode') === 'calendar') displayMode = 'calendar';
+} catch { /* ignore */ }
+activeView = displayMode;
 // Filtre global : 'all' (soirees + cours) ou 'parties' (soirees uniquement).
 let filterMode = 'all';
 try {
@@ -95,6 +103,7 @@ const $calDayCount = document.getElementById('cal-day-count');
 const $mapView = document.getElementById('map-view');
 const $mapCount = document.getElementById('map-count');
 const $tabbar = document.querySelector('.tabbar');
+const $displayToggle = document.getElementById('display-toggle');
 
 $caption.textContent = `Today · ${DAYS_FULL[todayDayIndex]} ${MONTHS_FULL[today.getMonth()]} ${today.getDate()}`;
 
@@ -617,7 +626,7 @@ function renderCalDayCards() {
   const evs = visibleEvents()
     .filter((e) => e.dayIndex === dayIdx)
     .sort((a, b) => firstActivityTimeKey(a) - firstActivityTimeKey(b));
-  $calDayLabel.textContent = `${DAYS_FULL[dayIdx]} ${calSelectedDate.getDate()}`;
+  $calDayLabel.textContent = `${DAYS_SHORT[dayIdx]} ${calSelectedDate.getDate()}`;
   $calDayCount.textContent = evs.length
     ? `${evs.length} event${evs.length > 1 ? 's' : ''}`
     : 'No events';
@@ -815,9 +824,28 @@ async function renderMap() {
 }
 
 // ── View switching ────────────────────────────────────────
+// Etat du toggle d'affichage (Liste / Par date), visible seulement dans Events.
+function syncDisplayToggle() {
+  $displayToggle.hidden = activeView === 'map';
+  $displayToggle.querySelectorAll('button').forEach((b) => {
+    const active = b.dataset.display === activeView;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-pressed', String(active));
+  });
+}
+
 function switchView(view) {
   activeView = view;
-  document.querySelectorAll('.tabbar button').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
+  // Memorise le dernier mode d'affichage Events (pour y revenir depuis Map).
+  if (view !== 'map') {
+    displayMode = view;
+    try { localStorage.setItem('displayMode', view); } catch { /* ignore */ }
+  }
+  // Tabbar a 2 onglets : Events (cards|calendar) et Map.
+  document.querySelectorAll('.tabbar button').forEach((b) => {
+    const active = b.dataset.view === 'map' ? view === 'map' : view !== 'map';
+    b.classList.toggle('active', active);
+  });
   $cards.hidden = view !== 'cards';
   $cal.hidden = view !== 'calendar';
   $mapView.hidden = view !== 'map';
@@ -828,6 +856,7 @@ function switchView(view) {
   document.body.classList.toggle('map-mode', view === 'map');
   // Calendar plein hauteur : cards du jour en haut, grille du mois en bas.
   document.body.classList.toggle('cal-mode', view === 'calendar');
+  syncDisplayToggle();
   refresh();
 }
 
@@ -911,7 +940,14 @@ $strip.addEventListener('click', (e) => {
 $tabbar.addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-view]');
   if (!btn) return;
-  switchView(btn.dataset.view);
+  // Onglet Events -> reprend le dernier mode d'affichage choisi (liste ou par date).
+  switchView(btn.dataset.view === 'map' ? 'map' : displayMode);
+});
+
+$displayToggle.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-display]');
+  if (!btn || btn.dataset.display === activeView) return;
+  switchView(btn.dataset.display);
 });
 
 $filter.addEventListener('click', (e) => {
@@ -974,5 +1010,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') load();
 });
 
+// Applique le mode d'affichage memorise (liste ou par date) au demarrage.
+switchView(displayMode);
 load();
 setInterval(() => load({ pollSkipIfHidden: true }), 60_000);

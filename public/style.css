@@ -66,10 +66,43 @@ button { font: inherit; cursor: pointer; }
    les controles vivent dans un bottom drawer. */
 .filter-row {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   max-width: 720px;
   margin: 0 auto;
   padding: 2px 4px 0;
+}
+
+/* Toggle d'affichage Liste / Par date (segmented, a gauche de Filters). */
+.display-toggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.display-toggle button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  min-height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  border-radius: 999px;
+  transition: background 0.18s, color 0.18s;
+}
+.display-toggle .dt-icon { width: 16px; height: 16px; }
+.display-toggle button.active {
+  background: linear-gradient(135deg, #ff7a3d 0%, #ff5a5f 100%);
+  color: #fff;
+}
+@media (hover: hover) {
+  .display-toggle button:hover:not(.active) { color: var(--text-2); }
 }
 .filter-cta {
   display: inline-flex;
@@ -721,11 +754,19 @@ body.cal-mode .cal-day-head {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  padding: 0 128px 8px 20px;
+  /* reserve a droite pour le toggle d'affichage + le bouton Filters (icone seule) */
+  padding: 0 148px 8px 20px;
   max-width: 720px;
   width: 100%;
   margin: 0 auto;
+  white-space: nowrap;
 }
+/* Dans les modes flottants (calendrier/carte), Filters passe en icone seule
+   pour laisser la place au label du jour / a la carte. */
+body.cal-mode .filter-cta .fc-label,
+body.map-mode .filter-cta .fc-label { display: none; }
+body.cal-mode .filter-cta,
+body.map-mode .filter-cta { padding: 0 10px; }
 .cal-day-label {
   font-size: 1.15rem;
   font-weight: 800;
