@@ -447,13 +447,17 @@ function buildSchedule(ev) {
     const rowKey = `${left.toLowerCase()}|${meta.toLowerCase()}`;
     if (seenRows.has(rowKey)) continue;
     seenRows.add(rowKey);
-    workshopRows.push({ time: a.time, left, meta });
+    workshopRows.push({ time: a.time, left, meta, style: d.style, who: d.who });
   }
   workshopRows.sort((a, b) => timeKey(a.time) - timeKey(b.time));
 
-  // Filet anti-doublon meme-heure : une ligne "niveau seul" (ex "Int/Adv class")
-  // est absorbee s'il existe au meme horaire une ligne plus riche (style/prof).
-  // Complete la passe de verif IA cote ingestion pour les donnees deja stockees.
+  // Filet anti-doublon meme-heure (donnees deja stockees, ex un event poste sur
+  // deux flyers). Au meme horaire, une ligne est absorbee si une ligne PLUS RICHE
+  // couvre le meme creneau :
+  //  - "niveau seul" ("Int/Adv class") absorbee par n'importe quelle ligne riche ;
+  //  - cours generique sans prof ("Salsa class") absorbe par un cours du MEME
+  //    style AVEC un prof ("Javi & Marina", salsa) -> meme cours, version complete.
+  // On NE fusionne PAS deux styles differents (ex Salsa vs Bachata Lady Style).
   const LOW_INFO_RE = /^(beg|int|adv)(\s*\/\s*(beg|int|adv))*\s+class$/i;
   const byTimeKey = new Map();
   for (const r of workshopRows) {
@@ -461,9 +465,15 @@ function buildSchedule(ev) {
     (byTimeKey.get(k) || byTimeKey.set(k, []).get(k)).push(r);
   }
   const consolidatedRows = workshopRows.filter((r) => {
-    if (!LOW_INFO_RE.test(r.left)) return true;
     const group = byTimeKey.get(timeKey(r.time)) || [];
-    return !group.some((o) => o !== r && !LOW_INFO_RE.test(o.left));
+    if (LOW_INFO_RE.test(r.left)) {
+      return !group.some((o) => o !== r && !LOW_INFO_RE.test(o.left));
+    }
+    // Generique = un style mais pas de prof -> absorbe par meme style + prof.
+    if (r.style && !r.who) {
+      return !group.some((o) => o !== r && o.style === r.style && o.who);
+    }
+    return true;
   });
 
   const socialByName = new Map();
