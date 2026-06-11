@@ -472,18 +472,21 @@ function renderCard(ev) {
     : '';
 
   // Toutes les soirees, pas seulement la premiere (certains venues ont
-  // pre-party + social, ou deux socials successifs).
+  // pre-party + social, ou deux socials successifs). La box est cliquable ->
+  // itineraire du lieu (la fleche ↗ remplace l'ancien ▶ qui faisait croire a un
+  // lecteur audio). Sans lieu : box non-cliquable, sans fleche (pas de fausse
+  // affordance).
   const socialHTML = socials
-    .map(
-      (s) => `<div class="social-box">
-        <div class="sb-meta">
+    .map((s) => {
+      const inner = `<div class="sb-meta">
           <span class="sb-label">Party</span>
           <span class="sb-time">${escapeHTML(fmtTime(s.time))}</span>
           <span class="sb-title">${escapeHTML(s.name || 'Social Dance')}</span>
-        </div>
-        <span class="sb-arrow" aria-hidden="true">▶</span>
-      </div>`
-    )
+        </div>${venueHref ? '<span class="sb-arrow" aria-hidden="true">↗</span>' : ''}`;
+      return venueHref
+        ? `<a class="social-box is-link" href="${escapeHTML(venueHref)}" target="_blank" rel="noopener" aria-label="${escapeHTML(s.name || 'Social Dance')} — directions${venue ? ` to ${escapeHTML(venue)}` : ''}">${inner}</a>`
+        : `<div class="social-box">${inner}</div>`;
+    })
     .join('');
 
   return `<article class="card" style="--card-gradient: ${gradient}">

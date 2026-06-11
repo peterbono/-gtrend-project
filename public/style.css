@@ -593,6 +593,16 @@ main {
   align-items: center;
   gap: 12px;
 }
+/* Box-lien : ouvre l'itineraire du lieu. Couleur/soulignement neutralises. */
+a.social-box.is-link {
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.18s, border-color 0.18s;
+}
+@media (hover: hover) {
+  a.social-box.is-link:hover { background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.32); }
+}
+a.social-box.is-link:hover .sb-arrow { background: rgba(255,255,255,0.28); }
 .social-box .sb-meta { display: flex; flex-direction: column; gap: 2px; }
 .social-box .sb-label {
   font-size: 0.62rem;
