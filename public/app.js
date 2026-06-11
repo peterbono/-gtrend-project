@@ -332,7 +332,17 @@ function timeKey(t) {
   return range[0].h * 100 + Number(range[0].min);
 }
 
+// Une venue qui est en fait une URL (un lien maps colle sans nom de lieu, ex
+// "maps.app.goo.gl/2kazpa...") ne doit JAMAIS s'afficher comme nom. Les vrais
+// lieux ont des espaces ; une URL est un seul token domaine.tld/chemin.
+function venueIsUrl(v) {
+  const s = (v || '').trim();
+  if (!s || /\s/.test(s)) return false;
+  return /^(https?:\/\/)?[\w-]+(\.[\w-]+)+\/\S+$/i.test(s);
+}
+
 function cleanVenueShort(v) {
+  if (venueIsUrl(v)) return '';
   return (v || '')
     .replace(/^(the|la|el|le)\s+/i, '')
     .split(/[,;]/)[0]
@@ -351,12 +361,26 @@ function titleFor(ev) {
 // mapUrl du tout : on ne sert mapUrl que si c'est un vrai lien carte, sinon
 // on retombe sur une recherche Google Maps "venue, Playa del Carmen".
 const MAPS_LINK_RE = /^(https?:\/\/)?(maps\.app\.goo\.gl|goo\.gl\/maps|(www\.)?google\.[a-z.]{2,10}\/maps|maps\.google|share\.google|(www\.)?waze\.com|maps\.apple\.com)/i;
-function venueMapHref(mapUrl, venueName) {
+function venueMapHref(mapUrl, venueRaw) {
   const u = (mapUrl || '').trim();
   if (u && MAPS_LINK_RE.test(u)) return /^https?:\/\//i.test(u) ? u : `https://${u}`;
-  const name = (venueName || '').trim();
+  const raw = (venueRaw || '').trim();
+  // La venue est elle-meme un lien : maps -> on l'utilise ; autre URL
+  // (Instagram...) -> pas un lieu, pas de lien.
+  if (venueIsUrl(raw)) {
+    return MAPS_LINK_RE.test(raw) ? (/^https?:\/\//i.test(raw) ? raw : `https://${raw}`) : null;
+  }
+  const name = cleanVenueShort(raw);
   if (!name) return null;
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name}, Playa del Carmen`)}`;
+}
+
+// Nom + lien d'affichage du lieu. Si la venue est une URL maps, le nom devient
+// "See location" et pointe vers la carte ; jamais l'URL brute en texte.
+function venueParts(ev) {
+  const name = cleanVenueShort(ev.venue);
+  const href = venueMapHref(ev.mapUrl, ev.venue);
+  return { label: name || (href ? 'See location' : ''), href };
 }
 
 function firstActivityTimeKey(ev) {
@@ -489,10 +513,9 @@ function renderCard(ev) {
   const num = dateOfWeekday(ev.dayIndex);
   const dayLabel = DAYS_SHORT[ev.dayIndex].toUpperCase();
   const title = titleFor(ev);
-  const venue = cleanVenueShort(ev.venue);
-  const venueHref = venueMapHref(ev.mapUrl, ev.venue);
-  const venueHTML = venue
-    ? `<div class="card-loc"><span class="arrow" aria-hidden="true">↗</span><span class="vlabel">${venueHref ? `<a href="${escapeHTML(venueHref)}" target="_blank" rel="noopener">${escapeHTML(venue)}</a>` : escapeHTML(venue)}</span></div>`
+  const { label: venueLabel, href: venueHref } = venueParts(ev);
+  const venueHTML = venueLabel
+    ? `<div class="card-loc"><span class="arrow" aria-hidden="true">↗</span><span class="vlabel">${venueHref ? `<a href="${escapeHTML(venueHref)}" target="_blank" rel="noopener">${escapeHTML(venueLabel)}</a>` : escapeHTML(venueLabel)}</span></div>`
     : '';
 
   const workshopsHTML = workshopRows.length
@@ -524,7 +547,7 @@ function renderCard(ev) {
           <span class="sb-title">${escapeHTML(s.name || 'Social Dance')}</span>
         </div>${venueHref ? '<span class="sb-arrow" aria-hidden="true">↗</span>' : ''}`;
       return venueHref
-        ? `<a class="social-box is-link" href="${escapeHTML(venueHref)}" target="_blank" rel="noopener" aria-label="${escapeHTML(s.name || 'Social Dance')} — directions${venue ? ` to ${escapeHTML(venue)}` : ''}">${inner}</a>`
+        ? `<a class="social-box is-link" href="${escapeHTML(venueHref)}" target="_blank" rel="noopener" aria-label="${escapeHTML(s.name || 'Social Dance')} — directions${venueLabel ? ` to ${escapeHTML(venueLabel)}` : ''}">${inner}</a>`
         : `<div class="social-box">${inner}</div>`;
     })
     .join('');
@@ -569,9 +592,9 @@ function renderCompactCard(ev) {
   const num = dateOfWeekday(ev.dayIndex);
   const dayLabel = DAYS_SHORT[ev.dayIndex].toUpperCase();
   const title = titleFor(ev);
-  const venue = cleanVenueShort(ev.venue);
-  const venueHTML = venue
-    ? `<div class="card-loc"><span class="arrow" aria-hidden="true">↗</span><span class="vlabel">${escapeHTML(venue)}</span></div>`
+  const venueLabel = venueParts(ev).label;
+  const venueHTML = venueLabel
+    ? `<div class="card-loc"><span class="arrow" aria-hidden="true">↗</span><span class="vlabel">${escapeHTML(venueLabel)}</span></div>`
     : '';
   const parts = [];
   if (workshopRows.length) parts.push(`${workshopRows.length} class${workshopRows.length > 1 ? 'es' : ''}`);
