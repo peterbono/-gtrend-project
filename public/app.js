@@ -378,11 +378,32 @@ function renderDayStrip() {
   }).join('');
 }
 
+// Lignes prix/promo deguisees en activite : ex "50% Discount for locals" se fait
+// parser comme une classe a l'heure "50:00" (le 50 de 50% lu comme heure). On
+// les detecte (motif promo OU heure impossible > 23h) pour les sortir des cours
+// et les afficher en tag, pas comme un creneau.
+const PROMO_RE = /(\d+\s*%|%\s*(off|disc|desc)|discount|descuento|cover|entrada|admission|2\s*x\s*1|gratis|free\s+entry|promo)/i;
+function isPromoLine(a) {
+  if (PROMO_RE.test(a?.name || '')) return true;
+  const r = resolveRange(a?.time);
+  return !!(r && r[0] && r[0].h > 23);
+}
+// Reconstruit un libelle propre : "50" + "% Discount for locals" -> "50% Discount
+// for locals". Strippe la ponctuation d'emphase finale (‼️, !!).
+function promoLabel(a) {
+  let name = (a?.name || '').trim();
+  const hourPart = (a?.time || '').split(/[:.h]/)[0].trim();
+  if (/^%/.test(name) && /^\d+$/.test(hourPart)) name = `${hourPart}${name}`;
+  // Strippe toute la ponctuation/emoji d'emphase en fin (‼️ = ‼ + selecteur FE0F).
+  return name.replace(/[^\p{L}\p{N}%)\]]+$/u, '').trim();
+}
+
 // Planning dedupe d'un event : lignes de cours (left/meta uniques) + soirees
-// (une par nom normalise, version avec plage horaire privilegiee). Partage par
-// la card pleine ET le resume compact pour des comptes coherents.
+// (une par nom normalise, version avec plage horaire privilegiee) + promos.
+// Partage par la card pleine ET le resume compact pour des comptes coherents.
 function buildSchedule(ev) {
-  const actsStored = ev.activities || [];
+  const actsStored = (ev.activities || []).filter((a) => !isPromoLine(a));
+  const promos = (ev.activities || []).filter(isPromoLine).map(promoLabel).filter(Boolean);
   const workshops = filterMode === 'parties' ? [] : actsStored.filter((a) => !isSocial(a));
   const socialsRaw = actsStored.filter(isSocial);
 
@@ -412,7 +433,7 @@ function buildSchedule(ev) {
     if (curHasRange && !prevHasRange) socialByName.set(key, s);
   }
   const socials = [...socialByName.values()].sort((a, b) => timeKey(a.time) - timeKey(b.time));
-  return { workshopRows, socials };
+  return { workshopRows, socials, promos };
 }
 
 // ── Card ──────────────────────────────────────────────────
@@ -437,12 +458,14 @@ function renderCard(ev) {
       tagLabels = ['Class'];
     }
   }
+  const { workshopRows, socials, promos } = buildSchedule(ev);
   const tagsHTML = tagLabels.map((t) => `<span class="tag"><span class="dot"></span>${escapeHTML(t)}</span>`).join('');
-  // Tag prix distinct, accent jaune/orange pour le faire ressortir.
+  // Tags prix / promo distincts, accent jaune/orange pour les faire ressortir.
   const priceHTML = ev.price
     ? `<span class="tag tag-price">${escapeHTML(ev.price)}</span>`
     : '';
-  const tags = tagsHTML + priceHTML;
+  const promoHTML = promos.map((p) => `<span class="tag tag-price">${escapeHTML(p)}</span>`).join('');
+  const tags = tagsHTML + priceHTML + promoHTML;
 
   const num = dateOfWeekday(ev.dayIndex);
   const dayLabel = DAYS_SHORT[ev.dayIndex].toUpperCase();
@@ -452,8 +475,6 @@ function renderCard(ev) {
   const venueHTML = venue
     ? `<div class="card-loc"><span class="arrow" aria-hidden="true">↗</span><span class="vlabel">${venueHref ? `<a href="${escapeHTML(venueHref)}" target="_blank" rel="noopener">${escapeHTML(venue)}</a>` : escapeHTML(venue)}</span></div>`
     : '';
-
-  const { workshopRows, socials } = buildSchedule(ev);
 
   const workshopsHTML = workshopRows.length
     ? `<div>
@@ -521,8 +542,11 @@ function renderCompactCard(ev) {
     const src = (ev.title || '').trim() || (ev.activities || [])[0]?.name || '';
     tagLabels = [src ? titleCaseUnicode(src.split(/\s+/).slice(0, 2).join(' ')) : 'Class'];
   }
+  // Memes comptes que la fiche detail (planning dedupe partage).
+  const { workshopRows, socials, promos } = buildSchedule(ev);
   const tagsHTML = tagLabels.map((t) => `<span class="tag"><span class="dot"></span>${escapeHTML(t)}</span>`).join('');
   const priceHTML = ev.price ? `<span class="tag tag-price">${escapeHTML(ev.price)}</span>` : '';
+  const promoHTML = promos.map((p) => `<span class="tag tag-price">${escapeHTML(p)}</span>`).join('');
   const num = dateOfWeekday(ev.dayIndex);
   const dayLabel = DAYS_SHORT[ev.dayIndex].toUpperCase();
   const title = titleFor(ev);
@@ -530,9 +554,6 @@ function renderCompactCard(ev) {
   const venueHTML = venue
     ? `<div class="card-loc"><span class="arrow" aria-hidden="true">↗</span><span class="vlabel">${escapeHTML(venue)}</span></div>`
     : '';
-
-  // Memes comptes que la fiche detail (planning dedupe partage).
-  const { workshopRows, socials } = buildSchedule(ev);
   const parts = [];
   if (workshopRows.length) parts.push(`${workshopRows.length} class${workshopRows.length > 1 ? 'es' : ''}`);
   const seenP = new Set();
@@ -545,7 +566,7 @@ function renderCompactCard(ev) {
 
   return `<article class="card card-compact" data-event-id="${escapeHTML(ev.id || '')}" style="--card-gradient: ${gradient}" role="button" tabindex="0" aria-label="${escapeHTML(title)} — view details">
     <div class="card-top">
-      <div class="tags">${tagsHTML}${priceHTML}</div>
+      <div class="tags">${tagsHTML}${priceHTML}${promoHTML}</div>
       <div class="day-badge">
         <div class="d-num">${num}</div>
         <div class="d-label">${dayLabel}</div>

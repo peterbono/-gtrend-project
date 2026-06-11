@@ -40,8 +40,13 @@ const TIME_RE = /^(\d{1,2}(?::\d{2})?\s*(?:[ap]\.?m?\.?)?(?:\s*[-–a]\s*\d{1,2}
 
 function parseTime(line) {
   const clean = stripLead(line);
+  // Rejette "50%", "2x1"... : un nombre suivi de "%" ou "x" n'est jamais une heure.
+  if (/^\d{1,2}\s*[%x]/i.test(clean)) return null;
   const m = clean.match(TIME_RE);
   if (!m) return null;
+  // Rejette les heures impossibles (> 23) : "50:00 foo" lu comme heure "50".
+  const hour = parseInt(m[1], 10);
+  if (hour > 23) return null;
   const time = m[1].replace(/\s+/g, '').toLowerCase();
   let name = clean.slice(m[0].length).replace(/^[\s:.–-]+/, '').trim();
   // Strippe le "h" espagnol/portugais ("19:00 h –", "19h –") + tirets restants.
@@ -81,6 +86,19 @@ const PRICE_AMOUNT_RE = /\$\s?(\d+(?:[.,]\d+)?)\s*(MXN|USD|EUR|pesos?)?/i;
 const PRICE_FREE_RE = /\b(free|gratis|gratuit|gratuito|sin\s*costo)\b/i;
 const PRICE_DONATION_RE = /\b(cooperaci[oó]n\s*voluntaria|voluntary\s*donation|donaci[oó]n|donation)\b/i;
 
+// Promos / tarifs : lignes "50% Discount", "2x1 drinks", "Cover $100", "Entrada libre"...
+// Ces lignes doivent alimenter price (et NON devenir une activite horaire bidon).
+// Le "free entry"/"gratis" reste capture en priorite par PRICE_FREE_RE plus haut.
+const PRICE_PROMO_RE = /(\d+\s*%|\b\d+\s*x\s*\d+\b|\bdiscount\b|\bdescuento\b|\bcover\b|\bentrada\b|\badmission\b|\bpromo(?:ci[oó]n)?\b|\bfree\s+entry\b)/i;
+
+// Nettoie un libelle de promo : vire la ponctuation/emphase finale (‼️, !!, ...) et les emojis.
+function cleanPromoLabel(line) {
+  let s = stripMarkdown(stripLead(line));
+  s = s.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]+/gu, ' ');
+  s = s.replace(/[!¡‼⁉]+/g, '').replace(/\s+/g, ' ').trim();
+  return s;
+}
+
 function parsePrice(line) {
   if (PRICE_FREE_RE.test(line)) return 'Free';
   if (PRICE_DONATION_RE.test(line)) return 'Donation';
@@ -89,6 +107,11 @@ function parsePrice(line) {
     const amount = m[1].replace(',', '.');
     const cur = (m[2] || 'MXN').toUpperCase().replace(/^PESOS?$/, 'MXN');
     return `$${amount} ${cur}`;
+  }
+  // Promo/tarif textuel ("50% Discount", "2x1 drinks", "Cover", "Entrada"...).
+  if (PRICE_PROMO_RE.test(line)) {
+    const label = cleanPromoLabel(line);
+    if (label) return label;
   }
   return null;
 }
@@ -184,7 +207,15 @@ export function parseMessage(text) {
     }
 
     const t = parseTime(line);
-    if (t) current.activities.push(t);
+    if (t) {
+      current.activities.push(t);
+      continue;
+    }
+
+    // Ligne non-horaire qui matche un motif promo ("50% Discount for locals ‼️",
+    // "2x1 drinks") : on l'a deja routee vers price ci-dessus, on ne la transforme
+    // PAS en activite avec un nom et une heure bidon.
+    if (PRICE_PROMO_RE.test(line)) continue;
   }
 
   push();

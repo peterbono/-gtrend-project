@@ -150,3 +150,72 @@ test('prefixes "¿Dónde?" et "Nos vemos en" strippes du venue', () => {
     assert.equal(ev.venue, expected, `venue pour "${pinLine}"`);
   }
 });
+
+// ── promos / heures impossibles : ne pas creer d'activite bidon ──────────────
+
+test('"50% Discount for locals ‼️" -> price/promo, PAS une activite "50:00"', () => {
+  const msg = `VIERNES – LUSH Latin Dance Party
+9p Clase de Salsa
+50% Discount for locals ‼️
+📍 The Warehouse`;
+  const [ev] = parseMessage(msg);
+  // L'activite "50:00 % Discount..." ne doit pas exister.
+  assert.deepEqual(ev.activities.map((a) => a.time), ['9p']);
+  assert.ok(!ev.activities.some((a) => /Discount/i.test(a.name)), 'pas de promo en activite');
+  // La promo est capturee dans price, libelle nettoye (sans ‼️).
+  assert.equal(ev.price, '50% Discount for locals');
+});
+
+test('"2x1 drinks" n\'est pas une activite "2:00"', () => {
+  const msg = `SABADO – Bachata Night
+9p Baile Social
+2x1 drinks
+📍 On Stage`;
+  const [ev] = parseMessage(msg);
+  assert.deepEqual(ev.activities.map((a) => a.time), ['9p']);
+  assert.ok(!ev.activities.some((a) => /drinks/i.test(a.name)));
+  assert.equal(ev.price, '2x1 drinks');
+});
+
+test('heure impossible "50:00 foo" rejetee (pas d\'activite)', () => {
+  const msg = `LUNES – Social
+50:00 foo
+8p Clase de Salsa
+📍 On Stage`;
+  const [ev] = parseMessage(msg);
+  assert.deepEqual(ev.activities.map((a) => a.time), ['8p']);
+  assert.ok(!ev.activities.some((a) => /foo/i.test(a.name)));
+});
+
+test('promo ne remplace pas un vrai prix deja capture ($200 MXN)', () => {
+  const msg = `VIERNES – Social
+9p Clase de Salsa
+$200 MXN
+50% Discount for locals
+📍 The Warehouse`;
+  const [ev] = parseMessage(msg);
+  assert.equal(ev.price, '$200 MXN');
+  assert.deepEqual(ev.activities.map((a) => a.time), ['9p']);
+});
+
+test('regression: "21:00", "8pm", "9-1am" restent des activites horaires', () => {
+  const msg = `MIERCOLES – Salsa On1
+21:00 Salsa class
+8pm Bachata
+9-1am Baile Social
+07-08 PM Warmup
+📍 On Stage`;
+  const [ev] = parseMessage(msg);
+  assert.deepEqual(ev.activities.map((a) => a.time), ['21:00', '8pm', '9-1am', '07-08pm']);
+  assert.equal(ev.activities[0].name, 'Salsa class');
+});
+
+test('regression: "19:00 Salsa class" devient bien une activite', () => {
+  const msg = `JUEVES – Social
+19:00 Salsa class
+📍 On Stage`;
+  const [ev] = parseMessage(msg);
+  assert.equal(ev.activities.length, 1);
+  assert.equal(ev.activities[0].time, '19:00');
+  assert.equal(ev.activities[0].name, 'Salsa class');
+});
