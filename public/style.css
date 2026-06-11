@@ -1146,7 +1146,129 @@ body.map-mode .leaflet-bottom.leaflet-left { margin-bottom: calc(86px + var(--sa
 }
 .tabbar button.active .t-icon { opacity: 1; }
 
-/* ── WIDE LAYOUT ──────────────────────────────────────── */
-@media (min-width: 720px) {
-  .cards-view { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+/* ── DESKTOP ───────────────────────────────────────────── */
+/* Le mobile cale tout a 720px avec une tabbar flottante en bas. Sur grand
+   ecran : conteneur large, grille de cards responsive, navigation en haut. */
+@media (min-width: 880px) {
+  body { padding-bottom: 0; }
+
+  /* Conteneur elargi (les blocs cales a 720 passent a 1180). */
+  .head-row,
+  .caption,
+  .day-strip,
+  main,
+  .filter-row { max-width: 1180px; }
+  main { padding: 18px 32px 64px; }
+
+  /* En-tete sticky : la barre des jours respire, separateur bas subtil. */
+  .top {
+    padding: max(18px, var(--safe-top)) 32px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .day-strip { gap: 8px; }
+  .day-strip button { min-height: 60px; }
+
+  /* Tabbar = nav en haut a droite (plus de pill flottante en bas). */
+  .tabbar {
+    position: fixed;
+    top: max(14px, var(--safe-top));
+    right: 32px;
+    bottom: auto;
+    left: auto;
+    transform: none;
+    z-index: 30;
+  }
+
+  /* Liste : jours empiles, chaque jour = grille de cards (header pleine ligne). */
+  .day-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 16px;
+    align-items: start;
+  }
+  .day-section-header,
+  .day-empty { grid-column: 1 / -1; }
+  .card { max-width: none; }
+
+  /* Filters retrouve son libelle (plus d'espace qu'en mobile). */
+  .filter-cta .fc-label { display: inline; }
+
+  /* ── MAP : panneau contenu, pas plein ecran ── */
+  body.map-mode { padding-bottom: 0; }
+  body.map-mode main { max-width: 1180px; padding: 18px 32px 64px; }
+  body.map-mode .top {
+    background: linear-gradient(to bottom, var(--bg) 78%, transparent);
+  }
+  body.map-mode .filter-row {
+    position: static; top: auto; right: auto; padding: 2px 4px 0;
+  }
+  body.map-mode .filter-cta {
+    background: var(--bg-elev); backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  body.map-mode .filter-cta .fc-label { display: inline; }
+  body.map-mode .map-view {
+    position: static; inset: auto; margin: 0; z-index: auto;
+  }
+  body.map-mode .map {
+    height: calc(100vh - 320px); min-height: 460px;
+    border-radius: 20px; overflow: hidden; border: 1px solid var(--border);
+  }
+  body.map-mode .map-legend {
+    position: static; transform: none; left: auto; bottom: auto;
+    margin: 14px auto 0; box-shadow: none;
+  }
+  body.map-mode .leaflet-bottom.leaflet-right,
+  body.map-mode .leaflet-bottom.leaflet-left { margin-bottom: 10px; }
+
+  /* ── CALENDAR (Par date) : mois a gauche, events du jour a droite ── */
+  body.cal-mode { padding-bottom: 0; }
+  body.cal-mode .top { display: block; }
+  body.cal-mode main { max-width: 1180px; padding: 18px 32px 64px; }
+  body.cal-mode .filter-row {
+    position: static; top: auto; right: auto; padding: 2px 4px 0;
+  }
+  body.cal-mode .filter-cta {
+    background: var(--bg-elev); backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  body.cal-mode .filter-cta .fc-label { display: inline; }
+  body.cal-mode .calendar-view {
+    position: static; inset: auto; margin: 0; padding: 0; z-index: auto;
+    display: grid;
+    grid-template-columns: minmax(360px, 0.85fr) 1.15fr;
+    grid-template-rows: auto 1fr;
+    gap: 6px 32px;
+    align-items: start;
+  }
+  body.cal-mode .cal-bottom {
+    grid-column: 1; grid-row: 1 / span 2;
+    flex: none; display: block; justify-content: initial; padding: 0; margin: 0;
+  }
+  body.cal-mode .cal-day-head {
+    grid-column: 2; grid-row: 1; padding: 0 0 14px; margin: 0;
+  }
+  body.cal-mode .cal-day-cards {
+    grid-column: 2; grid-row: 2;
+    flex: none; flex-direction: column; overflow: visible;
+    padding: 0; gap: 16px; scroll-snap-type: none;
+  }
+  body.cal-mode .cal-day-cards .card {
+    flex: none; width: 100%; max-width: 560px; scroll-snap-align: none;
+  }
+  /* Mois plus genereux sur desktop. */
+  body.cal-mode .cal-grid .cal-day { min-height: 46px; }
+  body.cal-mode .cal-month-label { font-size: 1.2rem; }
+
+  /* ── DRAWERS / FICHE : modale centree au lieu d'un bottom sheet ── */
+  .fd-sheet, .es-sheet {
+    top: 50%; bottom: auto; left: 50%;
+    transform: translate(-50%, -48%);
+    width: min(520px, 92vw); max-width: 520px; max-height: 84vh;
+    border-radius: 20px; border: 1px solid var(--border-2);
+    opacity: 0; transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+  }
+  .filter-drawer.open .fd-sheet,
+  .event-sheet.open .es-sheet {
+    transform: translate(-50%, -50%); opacity: 1;
+  }
+  .fd-handle, .es-handle { display: none; }
 }
