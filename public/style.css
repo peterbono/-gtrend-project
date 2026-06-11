@@ -782,10 +782,11 @@ body.map-mode .filter-cta { padding: 0 10px; }
 /* Cards du jour : pleines (memes infos que la vue Events), swipe horizontal,
    prennent toute la hauteur libre. Une card plus haute que l'espace defile
    verticalement en interne. */
+/* Cards compactes : hauteur naturelle (resume), pas de scroll interne. Le
+   slider prend juste la place qu'il faut ; le calendrier remplit le reste. */
 body.cal-mode .cal-day-cards {
   display: flex;
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
   gap: 14px;
   overflow-x: auto;
   overflow-y: hidden;
@@ -796,18 +797,34 @@ body.cal-mode .cal-day-cards {
 }
 body.cal-mode .cal-day-cards::-webkit-scrollbar { display: none; }
 body.cal-mode .cal-day-cards .card {
-  flex: 0 0 88%;
+  flex: 0 0 86%;
   max-width: 440px;
   scroll-snap-align: center;
-  max-height: 100%;
-  overflow-y: auto;
-  scrollbar-width: none;
+  overflow: hidden;
 }
-body.cal-mode .cal-day-cards .card::-webkit-scrollbar { display: none; }
-/* Card plus haute que l'espace : fond le bas pour signaler le scroll interne. */
-body.cal-mode .cal-day-cards .card.is-scrollable {
-  -webkit-mask-image: linear-gradient(to bottom, #000 87%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 87%, transparent 100%);
+.card-compact { cursor: pointer; display: flex; flex-direction: column; }
+.card-compact .card-bottom-text { flex: 1; }
+.card-summary {
+  margin-top: 6px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+.card-more {
+  align-self: flex-start;
+  margin-top: 16px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+}
+@media (hover: hover) {
+  .card-compact:hover .card-more { background: rgba(255, 255, 255, 0.24); }
 }
 .cal-day-empty {
   flex: 1;
@@ -817,10 +834,13 @@ body.cal-mode .cal-day-cards .card.is-scrollable {
   color: var(--text-3);
   font-size: 0.95rem;
 }
-/* Mois compact en bas : assez petit pour laisser la place aux cards. */
+/* Le mois prend l'espace que les cards compactes laissent (centre vertical). */
 body.cal-mode .cal-bottom {
-  flex: 0 0 auto;
-  padding: 8px 14px 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px 14px 0;
   max-width: 720px;
   width: 100%;
   margin: 0 auto;
@@ -863,6 +883,67 @@ body.cal-mode .filter-cta {
   background: rgba(15, 17, 24, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+}
+
+/* ── EVENT DETAIL SHEET (tap sur une card compacte) ─────── */
+.event-sheet { position: fixed; inset: 0; z-index: 45; }
+.es-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 5, 8, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.22s;
+}
+.es-sheet {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translate(-50%, 100%);
+  width: 100%;
+  max-width: 560px;
+  max-height: 88dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-2);
+  border-bottom: none;
+  border-radius: 24px 24px 0 0;
+  padding: 10px 16px calc(16px + var(--safe-bottom));
+  transition: transform 0.22s ease-out;
+  box-shadow: 0 -20px 60px -10px rgba(0, 0, 0, 0.6);
+}
+.event-sheet.open .es-backdrop { opacity: 1; }
+.event-sheet.open .es-sheet { transform: translate(-50%, 0); }
+.es-handle {
+  width: 38px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border-2);
+  margin: 2px auto 12px;
+  flex-shrink: 0;
+}
+.es-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+}
+/* La fiche montre le titre complet (pas de clamp de la vue liste). */
+.es-body .card-title {
+  -webkit-line-clamp: unset;
+  display: block;
+}
+.es-close {
+  flex-shrink: 0;
+  margin-top: 12px;
+  min-height: 46px;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  background: transparent;
+  border: 1px solid var(--border-2);
+  color: var(--text-2);
 }
 
 /* ── MAP VIEW (plein ecran facon Google Maps) ──────────── */

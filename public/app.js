@@ -104,6 +104,8 @@ const $mapView = document.getElementById('map-view');
 const $mapCount = document.getElementById('map-count');
 const $tabbar = document.querySelector('.tabbar');
 const $displayToggle = document.getElementById('display-toggle');
+const $eventSheet = document.getElementById('event-sheet');
+const $esBody = document.getElementById('es-body');
 
 $caption.textContent = `Today · ${DAYS_FULL[todayDayIndex]} ${MONTHS_FULL[today.getMonth()]} ${today.getDate()}`;
 
@@ -376,6 +378,43 @@ function renderDayStrip() {
   }).join('');
 }
 
+// Planning dedupe d'un event : lignes de cours (left/meta uniques) + soirees
+// (une par nom normalise, version avec plage horaire privilegiee). Partage par
+// la card pleine ET le resume compact pour des comptes coherents.
+function buildSchedule(ev) {
+  const actsStored = ev.activities || [];
+  const workshops = filterMode === 'parties' ? [] : actsStored.filter((a) => !isSocial(a));
+  const socialsRaw = actsStored.filter(isSocial);
+
+  const seenRows = new Set();
+  const workshopRows = [];
+  for (const a of workshops) {
+    const d = decomposeWorkshop(a.name);
+    const lvls = d.levels.map((l) =>
+      l.replace(/^Beginner$/, 'Beg').replace(/^Intermediate$/, 'Int').replace(/^Advanced$/, 'Adv').replace(/intermediate\/advanced/i, 'Int/Adv')
+    );
+    const levelLabel = lvls.length ? lvls.join('/') : '';
+    const { left, meta } = makeWorkshopRow(d, levelLabel, a.name);
+    const rowKey = `${left.toLowerCase()}|${meta.toLowerCase()}`;
+    if (seenRows.has(rowKey)) continue;
+    seenRows.add(rowKey);
+    workshopRows.push({ time: a.time, left, meta });
+  }
+  workshopRows.sort((a, b) => timeKey(a.time) - timeKey(b.time));
+
+  const socialByName = new Map();
+  for (const s of socialsRaw) {
+    const key = (s.name || 'social').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    const prev = socialByName.get(key);
+    if (!prev) { socialByName.set(key, s); continue; }
+    const prevHasRange = (resolveRange(prev.time) || []).length > 1;
+    const curHasRange = (resolveRange(s.time) || []).length > 1;
+    if (curHasRange && !prevHasRange) socialByName.set(key, s);
+  }
+  const socials = [...socialByName.values()].sort((a, b) => timeKey(a.time) - timeKey(b.time));
+  return { workshopRows, socials };
+}
+
 // ── Card ──────────────────────────────────────────────────
 function renderCard(ev) {
   // Titre et venue participent a la detection : "MAJAO Salsa y Bachata" tagge
@@ -414,49 +453,7 @@ function renderCard(ev) {
     ? `<div class="card-loc"><span class="arrow" aria-hidden="true">↗</span><span class="vlabel">${venueHref ? `<a href="${escapeHTML(venueHref)}" target="_blank" rel="noopener">${escapeHTML(venue)}</a>` : escapeHTML(venue)}</span></div>`
     : '';
 
-  // On garde l'ordre STOCKE pour la dedup (la premiere version d'un creneau
-  // est la plus confirmee), le tri horaire vient apres.
-  const actsStored = ev.activities || [];
-  // En mode "parties", on ne montre que la/les soirees : pas de section Classes.
-  const workshops = filterMode === 'parties' ? [] : actsStored.filter((a) => !isSocial(a));
-  const socialsRaw = actsStored.filter(isSocial);
-
-  // Une ligne par activite. Si plusieurs niveaux sont detectes (ex "Beginner & Intermediate"),
-  // on les combine en une seule etiquette : c'est UNE classe couvrant les 2 niveaux,
-  // pas 2 classes paralleles.
-  // Dedup au rendu : le store peut contenir deux versions du meme creneau a des
-  // heures differentes (vieux flyer vs post recent) -> meme intitule decompose
-  // = une seule ligne.
-  const seenRows = new Set();
-  const workshopRows = [];
-  for (const a of workshops) {
-    const d = decomposeWorkshop(a.name);
-    // Abrege systematiquement les niveaux : "Beginner" -> "Beg" etc. + sans espace autour du "/".
-    const lvls = d.levels.map((l) =>
-      l.replace(/^Beginner$/, 'Beg').replace(/^Intermediate$/, 'Int').replace(/^Advanced$/, 'Adv').replace(/intermediate\/advanced/i, 'Int/Adv')
-    );
-    const levelLabel = lvls.length ? lvls.join('/') : '';
-    const { left, meta } = makeWorkshopRow(d, levelLabel, a.name);
-    const rowKey = `${left.toLowerCase()}|${meta.toLowerCase()}`;
-    if (seenRows.has(rowKey)) continue;
-    seenRows.add(rowKey);
-    workshopRows.push({ time: a.time, left, meta });
-  }
-  workshopRows.sort((a, b) => timeKey(a.time) - timeKey(b.time));
-
-  // Socials : meme nom normalise = meme soiree (il ne peut pas y avoir deux fois
-  // la meme party le meme soir). On garde la version avec plage horaire (info la
-  // plus riche), sinon la premiere stockee.
-  const socialByName = new Map();
-  for (const s of socialsRaw) {
-    const key = (s.name || 'social').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
-    const prev = socialByName.get(key);
-    if (!prev) { socialByName.set(key, s); continue; }
-    const prevHasRange = (resolveRange(prev.time) || []).length > 1;
-    const curHasRange = (resolveRange(s.time) || []).length > 1;
-    if (curHasRange && !prevHasRange) socialByName.set(key, s);
-  }
-  const socials = [...socialByName.values()].sort((a, b) => timeKey(a.time) - timeKey(b.time));
+  const { workshopRows, socials } = buildSchedule(ev);
 
   const workshopsHTML = workshopRows.length
     ? `<div>
@@ -506,6 +503,71 @@ function renderCard(ev) {
       </div>
     </div>
   </article>`;
+}
+
+// ── Compact card (mode Par date) : resume sans scroll, tap -> fiche detail ─
+function renderCompactCard(ev) {
+  const styles = eventStyles(ev);
+  const gradient = styleGradient(styles);
+  let tagLabels;
+  if (styles.length) {
+    tagLabels = styles.slice(0, 3).map((s) => STYLE_LABEL[s] || s);
+  } else if (eventHasSocial(ev)) {
+    tagLabels = ['Party'];
+  } else {
+    const src = (ev.title || '').trim() || (ev.activities || [])[0]?.name || '';
+    tagLabels = [src ? titleCaseUnicode(src.split(/\s+/).slice(0, 2).join(' ')) : 'Class'];
+  }
+  const tagsHTML = tagLabels.map((t) => `<span class="tag"><span class="dot"></span>${escapeHTML(t)}</span>`).join('');
+  const priceHTML = ev.price ? `<span class="tag tag-price">${escapeHTML(ev.price)}</span>` : '';
+  const num = dateOfWeekday(ev.dayIndex);
+  const dayLabel = DAYS_SHORT[ev.dayIndex].toUpperCase();
+  const title = titleFor(ev);
+  const venue = cleanVenueShort(ev.venue);
+  const venueHTML = venue
+    ? `<div class="card-loc"><span class="arrow" aria-hidden="true">↗</span><span class="vlabel">${escapeHTML(venue)}</span></div>`
+    : '';
+
+  // Memes comptes que la fiche detail (planning dedupe partage).
+  const { workshopRows, socials } = buildSchedule(ev);
+  const parts = [];
+  if (workshopRows.length) parts.push(`${workshopRows.length} class${workshopRows.length > 1 ? 'es' : ''}`);
+  const seenP = new Set();
+  for (const s of socials) {
+    const t = fmtTime(s.time);
+    const key = t || (s.name || '');
+    if (!seenP.has(key)) { seenP.add(key); parts.push(`Party${t ? ` ${t}` : ''}`); }
+  }
+  const summary = parts.length ? parts.join(' · ') : 'Tap for details';
+
+  return `<article class="card card-compact" data-event-id="${escapeHTML(ev.id || '')}" style="--card-gradient: ${gradient}" role="button" tabindex="0" aria-label="${escapeHTML(title)} — view details">
+    <div class="card-top">
+      <div class="tags">${tagsHTML}${priceHTML}</div>
+      <div class="day-badge">
+        <div class="d-num">${num}</div>
+        <div class="d-label">${dayLabel}</div>
+      </div>
+    </div>
+    <div class="card-bottom-text">
+      <h2 class="card-title" dir="auto">${escapeHTML(title)}</h2>
+      ${venueHTML}
+      <div class="card-summary">${escapeHTML(summary)}</div>
+    </div>
+    <div class="card-more">View details →</div>
+  </article>`;
+}
+
+// Fiche detail : la card pleine dans un bottom sheet scrollable.
+function openEventSheet(ev) {
+  $esBody.innerHTML = renderCard(ev);
+  $eventSheet.hidden = false;
+  document.body.classList.add('no-scroll');
+  requestAnimationFrame(() => $eventSheet.classList.add('open'));
+}
+function closeEventSheet() {
+  $eventSheet.classList.remove('open');
+  document.body.classList.remove('no-scroll');
+  setTimeout(() => { $eventSheet.hidden = true; $esBody.innerHTML = ''; }, 220);
 }
 
 // ── Cards view with rolling scroll across days ────────────
@@ -631,16 +693,9 @@ function renderCalDayCards() {
     ? `${evs.length} event${evs.length > 1 ? 's' : ''}`
     : 'No events';
   $calDayCards.innerHTML = evs.length
-    ? evs.map(renderCard).join('')
+    ? evs.map(renderCompactCard).join('')
     : `<div class="cal-day-empty">Nothing on this day.</div>`;
   $calDayCards.scrollLeft = 0;
-  // Marque les cards trop hautes pour l'espace : un degrade en bas signale
-  // qu'on peut scroller dans la card pour voir le reste (soirees, derniers cours).
-  requestAnimationFrame(() => {
-    $calDayCards.querySelectorAll('.card').forEach((c) => {
-      c.classList.toggle('is-scrollable', c.scrollHeight > c.clientHeight + 4);
-    });
-  });
 }
 
 // ── Map (Leaflet bounded to Playa, geocoded venues, user position, OSRM walking) ──
@@ -948,6 +1003,27 @@ $displayToggle.addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-display]');
   if (!btn || btn.dataset.display === activeView) return;
   switchView(btn.dataset.display);
+});
+
+// Tap sur une card compacte (mode Par date) -> ouvre la fiche detail.
+function openSheetForCard(card) {
+  const id = card.dataset.eventId;
+  const ev = (cache || []).find((e) => e.id === id);
+  if (ev) openEventSheet(ev);
+}
+$calDayCards.addEventListener('click', (e) => {
+  const card = e.target.closest('.card-compact');
+  if (card) openSheetForCard(card);
+});
+$calDayCards.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const card = e.target.closest('.card-compact');
+  if (card) { e.preventDefault(); openSheetForCard(card); }
+});
+$eventSheet.querySelector('.es-backdrop').addEventListener('click', closeEventSheet);
+document.getElementById('es-close').addEventListener('click', closeEventSheet);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$eventSheet.hidden) closeEventSheet();
 });
 
 $filter.addEventListener('click', (e) => {
