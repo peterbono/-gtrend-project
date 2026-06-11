@@ -210,7 +210,14 @@ function decomposeWorkshop(name) {
 
   // Replace globaux : "Salsa Cubana Casino" a 2 sous-styles, un replace simple
   // n'en stripperait qu'un et le reste polluerait le nom du prof.
+  // Protege le connecteur entre deux NOMS de profs ("Javi & Magui", "Maria y Jose")
+  // avant que FILLER_RE / le strip de conjonctions / le strip "&" ne le mangent.
+  // On le remplace par un sentinel (U+0001) qui traverse tout le pipeline, puis on
+  // le restitue en " & " a la fin. Un nom compose sans connecteur ("Maria Jose")
+  // n'est PAS touche, donc on distingue "Maria Jose" (1 prof) de "Maria & Jose" (2 profs).
+  const NAME_JOIN = '\u0001';
   let who = (name || '')
+    .replace(/([\p{L}.])\s*(?:&|\by\b|\be\b|\band\b)\s*(?=[\p{L}])/giu, `$1 ${NAME_JOIN} `)
     .replace(new RegExp(STYLE_RE.source, 'gi'), '')
     .replace(LEVEL_RE_G, '')
     .replace(new RegExp(SUBSTYLE_RE.source, 'gi'), '')
@@ -225,6 +232,12 @@ function decomposeWorkshop(name) {
     .trim();
   // Strip leading/trailing punctuation (inclut em dash U+2014, fleches et toute ponctuation residuelle).
   who = who.replace(/^[\s·,;:\-–—→›»>\/\\|*]+|[\s·,;:\-–—→›»>\/\\|*]+$/g, '').trim();
+  // Restitue le connecteur de noms en " & " (apres avoir nettoye un sentinel orphelin
+  // si un des deux cotes a ete strippe, ex "Salsa Cubana & Casino" -> styles vides).
+  who = who.replace(new RegExp(`(?:^|\\s)${NAME_JOIN}(?=\\s|$)`, 'g'), ' & ')
+           .replace(/\s+/g, ' ')
+           .replace(/^[\s&]+|[\s&]+$/g, '')
+           .trim();
   // Si reste essentiellement de la ponctuation (< 2 lettres significatives), drop.
   const alphaCount = (who.match(/[a-zA-ZÀ-ſ]/g) || []).length;
   if (alphaCount < 2) who = '';
@@ -612,6 +625,13 @@ function renderCalDayCards() {
     ? evs.map(renderCard).join('')
     : `<div class="cal-day-empty">Nothing on this day.</div>`;
   $calDayCards.scrollLeft = 0;
+  // Marque les cards trop hautes pour l'espace : un degrade en bas signale
+  // qu'on peut scroller dans la card pour voir le reste (soirees, derniers cours).
+  requestAnimationFrame(() => {
+    $calDayCards.querySelectorAll('.card').forEach((c) => {
+      c.classList.toggle('is-scrollable', c.scrollHeight > c.clientHeight + 4);
+    });
+  });
 }
 
 // ── Map (Leaflet bounded to Playa, geocoded venues, user position, OSRM walking) ──
