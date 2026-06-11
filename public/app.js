@@ -423,6 +423,21 @@ function buildSchedule(ev) {
   }
   workshopRows.sort((a, b) => timeKey(a.time) - timeKey(b.time));
 
+  // Filet anti-doublon meme-heure : une ligne "niveau seul" (ex "Int/Adv class")
+  // est absorbee s'il existe au meme horaire une ligne plus riche (style/prof).
+  // Complete la passe de verif IA cote ingestion pour les donnees deja stockees.
+  const LOW_INFO_RE = /^(beg|int|adv)(\s*\/\s*(beg|int|adv))*\s+class$/i;
+  const byTimeKey = new Map();
+  for (const r of workshopRows) {
+    const k = timeKey(r.time);
+    (byTimeKey.get(k) || byTimeKey.set(k, []).get(k)).push(r);
+  }
+  const consolidatedRows = workshopRows.filter((r) => {
+    if (!LOW_INFO_RE.test(r.left)) return true;
+    const group = byTimeKey.get(timeKey(r.time)) || [];
+    return !group.some((o) => o !== r && !LOW_INFO_RE.test(o.left));
+  });
+
   const socialByName = new Map();
   for (const s of socialsRaw) {
     const key = (s.name || 'social').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
@@ -433,7 +448,7 @@ function buildSchedule(ev) {
     if (curHasRange && !prevHasRange) socialByName.set(key, s);
   }
   const socials = [...socialByName.values()].sort((a, b) => timeKey(a.time) - timeKey(b.time));
-  return { workshopRows, socials, promos };
+  return { workshopRows: consolidatedRows, socials, promos };
 }
 
 // ── Card ──────────────────────────────────────────────────
