@@ -36,12 +36,22 @@ function stripFillerPrefix(s) {
 // Ex: "6p", "9-10p", "9p-1a", "7pm", "7-11p", "21:00", "5:00 PM – 7:30 PM", "8:00p.m.".
 // Les points de "a.m."/"p.m." sont consommes pour ne pas laisser ".m." dans le nom.
 // (?!\w) au lieu de \b : apres un "." final il n'y a pas de word boundary.
-const TIME_RE = /^(\d{1,2}(?::\d{2})?\s*(?:[ap]\.?m?\.?)?(?:\s*[-–a]\s*\d{1,2}(?::\d{2})?\s*(?:[ap]\.?m?\.?)?)?)(?!\w)/i;
+// Minutes : separateur ":" mais aussi "." (8.15pm) et "h" (8h15), frequents sur
+// les flyers latino/europeens.
+const TIME_RE = /^(\d{1,2}(?:[:.h]\d{2})?\s*(?:[ap]\.?m?\.?)?(?:\s*[-–a]\s*\d{1,2}(?:[:.h]\d{2})?\s*(?:[ap]\.?m?\.?)?)?)(?!\w)/i;
+
+// Une DUREE n'est pas une heure de debut : "1.30 hs de clase", "2 horas de
+// practica", "90 min de social". Motif = nombre (+separateur) + unite de duree
+// SUIVIE d'un mot. Garde-fou : "19:00 h –" (h = suffixe horaire espagnol, suivi
+// d'un tiret, pas d'un mot) reste une heure valide.
+const DURATION_RE = /^\d{1,2}(?:[.,:h]\d{1,2})?\s*(?:horas?|hrs?|hs?|min(?:utos?)?)\b\s+(?:de\s+|of\s+)?[a-záéíóúñ]/i;
 
 function parseTime(line) {
   const clean = stripLead(line);
   // Rejette "50%", "2x1"... : un nombre suivi de "%" ou "x" n'est jamais une heure.
   if (/^\d{1,2}\s*[%x]/i.test(clean)) return null;
+  // Rejette les durees ("1.30 hs de clase") pour ne pas creer un faux cours.
+  if (DURATION_RE.test(clean)) return null;
   const m = clean.match(TIME_RE);
   if (!m) return null;
   // Rejette les heures impossibles (> 23) : "50:00 foo" lu comme heure "50".
@@ -116,11 +126,42 @@ function parsePrice(line) {
   return null;
 }
 
+// Lieu annonce par un label textuel (sans 📍) : "Zona: ZAZIL-HA", "Lugar: ...",
+// "Venue: ...". Capture la valeur apres le deux-points.
+const VENUE_LABEL_RE = /^(?:zona|lugar|ubicaci[oó]n|location|venue|lieu|place|d[oó]nde|where|address|adresse|direcci[oó]n)\s*[:：]\s*(.+)$/i;
+
+// Mots-jours (ES/EN/FR) a retirer d'un titre extrait de la ligne-jour.
+const DAY_WORDS_RE = /\b(domingo|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|sunday|monday|tuesday|wednesday|thursday|friday|saturday|dimanche|lundi|mardi|mercredi|jeudi|vendredi|samedi)s?\b/gi;
+// Filler devant un titre ("PRÓXIMO SÁBADO ...", "EVERY THURSDAY ...") — on ne
+// retire PAS les articles (el/la/los) pour ne pas amputer "La Fonda".
+const TITLE_FILLER_RE = /\b(pr[oó]ximo?|este|esta|next|this|every|cada|todos\s+los|todas\s+las|ce|cet|cette)\b/gi;
+// Ligne purement "date" ("20 de junio", "june 20", "el 20") : pas un titre.
+const DATE_LINE_RE = /^\s*(?:el\s+|le\s+)?\d{1,2}(?:\s*(?:de|of)\s+)?\s*(?:ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|january|february|march|april|may|june|july|august|september|october|november|december)\w*\s*\d{0,4}\s*$/i;
+// Lignes-parasites a ne jamais retenir comme titre ("English Below", "Ver abajo").
+const NOISE_TITLE_RE = /^\s*(?:english\s+below|espa[nñ]ol\s+(?:abajo|below)|below|abajo|ver\s+abajo|see\s+below|info|menu)\s*$/i;
+
 function looksLikeTitle(s) {
   if (!s) return false;
   if (ONLY_URL_RE.test(s)) return false;
   if (ONLY_TIME_RE.test(s)) return false;
+  if (DATE_LINE_RE.test(s)) return false;
+  if (NOISE_TITLE_RE.test(s)) return false;
   return true;
+}
+
+// Retire TOUS les emojis + modificateurs (variation selectors, ZWJ, skin tones).
+function stripEmoji(s) {
+  return (s || '').replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}\u{1F3FB}-\u{1F3FF}\u{2640}\u{2642}]/gu, ' ');
+}
+
+// Extrait un titre candidat d'une ligne-jour sans tiret : retire emojis,
+// markdown, mots-jours et filler, puis valide.
+function titleFromDayLine(line) {
+  let t = stripEmoji(line);
+  t = stripMarkdown(t);
+  t = t.replace(DAY_WORDS_RE, ' ').replace(TITLE_FILLER_RE, ' ').replace(/\s+/g, ' ').trim();
+  t = stripFillerPrefix(t);
+  return looksLikeTitle(t) ? t : '';
 }
 
 // Parse un bloc texte WhatsApp en une liste d'evenements (un par jour trouve).
@@ -129,13 +170,26 @@ export function parseMessage(text) {
   const lines = text.split(/\r?\n/);
   const events = [];
   let current = null;
+  // Titre orphelin a reporter : titre vu avant le 1er jour, ou titre d'un bloc
+  // incomplet (lieu sur un bloc-jour suivant du meme flyer).
+  let pendingTitle = '';
 
   const push = () => {
     if (!current) return;
-    // Regle metier : un event valide = un venue ET au moins une activite horaire.
     const hasRealVenue = current.venue && !ONLY_URL_RE.test(current.venue);
+    // Event annonce SANS horaire (workshop : "Sábado, Zona: X, $250") : si on a un
+    // vrai lieu ET un vrai titre mais aucune activite, on synthetise une activite
+    // sans heure depuis le titre — sinon la regle "lieu + activite" le jetterait.
+    if (!current.activities.length && hasRealVenue && looksLikeTitle(current.title)) {
+      current.activities.push({ time: '', name: current.title });
+    }
     const hasActivity = current.activities.length > 0;
-    if (hasRealVenue && hasActivity) events.push(current);
+    if (hasRealVenue && hasActivity) {
+      events.push(current);
+    } else if (looksLikeTitle(current.title)) {
+      // Bloc incomplet mais titre exploitable -> on le reporte au bloc suivant.
+      pendingTitle = current.title;
+    }
     current = null;
   };
 
@@ -145,16 +199,21 @@ export function parseMessage(text) {
 
     const day = detectDay(line);
     if (day) {
-      // Nouveau bloc jour. Titre = ce qui suit un tiret, sinon le reste de la ligne.
+      // Nouveau bloc jour. Titre = ce qui suit un tiret, sinon derive de la ligne.
       push();
       let title = '';
       const dash = line.split(/[–-]/);
-      if (dash.length > 1) title = dash.slice(1).join('-').trim();
-      title = title.replace(/[\u{1F300}-\u{1FAFF}☀-➿]/gu, '').trim();
-      title = stripMarkdown(title);
-      title = stripFillerPrefix(title);
-      // Garde le titre uniquement s'il a l'air d'un vrai titre (pas un timestamp ou une URL).
-      if (!looksLikeTitle(title)) title = '';
+      if (dash.length > 1) {
+        title = stripMarkdown(stripEmoji(dash.slice(1).join('-')).trim());
+        title = stripFillerPrefix(title);
+        if (!looksLikeTitle(title)) title = '';
+      } else {
+        // Pas de tiret : derive le titre de la ligne (retire jour + filler).
+        title = titleFromDayLine(line);
+      }
+      // Titre vide mais un titre orphelin attend -> on l'adopte.
+      if (!title && pendingTitle) title = pendingTitle;
+      pendingTitle = '';
       current = {
         day: day.day,
         dayIndex: day.dayIndex,
@@ -167,7 +226,15 @@ export function parseMessage(text) {
       continue;
     }
 
-    if (!current) continue; // lignes avant le premier jour : ignorees
+    if (!current) {
+      // Avant le premier jour : memorise une ligne-titre potentielle (nom de
+      // l'event place en tete du flyer, avant la mention du jour).
+      if (!pendingTitle) {
+        const cand = stripFillerPrefix(stripMarkdown(stripLead(line)));
+        if (cand.length >= 4 && looksLikeTitle(cand)) pendingTitle = cand;
+      }
+      continue;
+    }
 
     if (line.includes(PIN)) {
       const afterPin = stripFillerPrefix(stripMarkdown(line.split(PIN)[1].replace(/^[\s:]+/, '').trim()));
@@ -187,6 +254,22 @@ export function parseMessage(text) {
         }
       }
       continue;
+    }
+
+    // Lieu via label textuel ("Zona: ZAZIL-HA", "Lugar: ...") quand il n'y a pas
+    // de 📍. On ne remplace pas un venue deja capture (le 📍 reste prioritaire).
+    if (!current.venue) {
+      const vlabel = stripLead(line).match(VENUE_LABEL_RE);
+      if (vlabel) {
+        let val = stripMarkdown(vlabel[1].trim());
+        const urlIn = val.match(MAP_URL_RE);
+        if (urlIn && isMapUrl(urlIn[1])) {
+          if (!current.mapUrl) current.mapUrl = toMapUrl(urlIn[1]);
+          val = val.replace(urlIn[0], '').replace(/[\s,;|]+$/, '').trim();
+        }
+        if (val && !ONLY_URL_RE.test(val)) current.venue = val;
+        continue;
+      }
     }
 
     const url = line.match(URL_RE) || line.match(MAP_URL_RE);

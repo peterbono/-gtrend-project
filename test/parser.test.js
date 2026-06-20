@@ -219,3 +219,59 @@ test('regression: "19:00 Salsa class" devient bien une activite', () => {
   assert.equal(ev.activities[0].time, '19:00');
   assert.equal(ev.activities[0].name, 'Salsa class');
 });
+
+test('temps: separateur point "8.15pm" garde minutes et nom propre', () => {
+  const msg = `MARTES
+📍 Mercado
+8.15pm La Natico & Orlando`;
+  const [ev] = parseMessage(msg);
+  assert.equal(ev.activities.length, 1);
+  assert.equal(ev.activities[0].time, '8.15pm');
+  assert.equal(ev.activities[0].name, 'La Natico & Orlando');
+});
+
+test('temps: duree "1.30 hs de clase" n\'est PAS lue comme une heure', () => {
+  const msg = `LUNES – Taller
+📍 On Stage
+1.30 hs de clase de bachata
+8pm Clase de Bachata`;
+  const [ev] = parseMessage(msg);
+  // Seul "8pm" est une activite ; la duree ne cree pas un faux cours a 1:30.
+  assert.deepEqual(ev.activities.map((a) => a.time), ['8pm']);
+});
+
+test('venue: label "Zona:/Lugar:" sans 📍 alimente le venue', () => {
+  const msg = `SABADO – Fiesta
+Zona: ZAZIL-HA
+9pm Social`;
+  const [ev] = parseMessage(msg);
+  assert.equal(ev.venue, 'ZAZIL-HA');
+});
+
+test('workshop sans heure: lieu + titre synthetisent une activite sans heure', () => {
+  const msg = `*PRÓXIMO SÁBADO❤️‍🔥 WORKSHOP DE BACHAZOUK✨*
+🩵 SÁBADO 20 de junio
+🩵 Zona: ZAZIL-HA
+🩵 $250 Méx`;
+  const [ev] = parseMessage(msg);
+  assert.equal(ev.dayIndex, 6);
+  assert.equal(ev.venue, 'ZAZIL-HA');
+  assert.equal(ev.title, 'WORKSHOP DE BACHAZOUK');
+  assert.equal(ev.activities.length, 1);
+  assert.equal(ev.activities[0].time, '');
+  assert.match(ev.activities[0].name, /BACHAZOUK/);
+});
+
+test('jour anglais: "Monday" cree bien un bloc (jour 1)', () => {
+  const msg = `Monday Night Party
+📍 Maui
+9pm Social`;
+  const [ev] = parseMessage(msg);
+  assert.equal(ev.dayIndex, 1);
+});
+
+test('garde-fou: event jour+lieu SANS titre ni heure reste jete (pas de bruit)', () => {
+  const msg = `VIERNES
+📍 Some Venue`;
+  assert.equal(parseMessage(msg).length, 0);
+});

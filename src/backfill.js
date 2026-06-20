@@ -9,6 +9,16 @@ import { findGroups, parseGroupNames } from './group-match.js';
 
 const { Client, LocalAuth } = pkg;
 
+let _r;
+async function visCache() {
+  if (_r !== undefined) return _r;
+  const url = process.env.UPSTASH_REDIS_REST_URL, token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) { _r = null; return _r; }
+  const { Redis } = await import('@upstash/redis');
+  _r = new Redis({ url, token });
+  return _r;
+}
+
 const GROUP_NAME = process.env.GROUP_NAME || 'PDC Dance Socials';
 const HOURS = Number(process.env.BACKFILL_HOURS || 24);
 const LIMIT = Number(process.env.BACKFILL_LIMIT || 200);
@@ -78,6 +88,8 @@ client.on('ready', async () => {
 
     let captured = 0;
     let visionCalls = 0;
+    let skipped = 0;
+    const cache = await visCache();
 
     for (const group of matched) {
       console.log(`📜 [${group.name}] fetch ${LIMIT} derniers messages...`);
@@ -91,11 +103,17 @@ client.on('ready', async () => {
           let source = 'text';
 
           if (events.length === 0 && msg.hasMedia && visionEnabled()) {
-            const media = await msg.downloadMedia();
-            if (media && media.mimetype?.startsWith('image/')) {
-              events = await extractFromImage(media.data, media.mimetype);
-              source = 'vision';
-              visionCalls += 1;
+            const msgId = msg.id?._serialized || msg.id?.id || String(msg.id);
+            if (cache && (await cache.get(`vis:${msgId}`))) {
+              skipped += 1;
+            } else {
+              const media = await msg.downloadMedia();
+              if (media && media.mimetype?.startsWith('image/')) {
+                events = await extractFromImage(media.data, media.mimetype);
+                source = 'vision';
+                visionCalls += 1;
+                if (cache) await cache.set(`vis:${msgId}`, '1', { ex: 60 * 60 * 24 * 30 });
+              }
             }
           }
 
@@ -110,7 +128,7 @@ client.on('ready', async () => {
       }
     }
 
-    console.log(`✅ Backfill termine : ${captured} evenement(s) upsert sur ${matched.length} groupe(s), ${visionCalls} appels vision.`);
+    console.log(`✅ Backfill termine : ${captured} evenement(s) upsert sur ${matched.length} groupe(s), ${visionCalls} appels vision, ${skipped} flyers skip (cache).`);
     shutdown('done', 0);
   } catch (err) {
     console.error('[backfill] erreur :', err.message);

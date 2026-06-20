@@ -79,7 +79,7 @@ function better(a, b) {
 // les plages qui traversent minuit ("9-1am" -> 21:00) ou midi ("11-1pm" -> 11:00).
 // NB : pas de \b entre un chiffre et "pm" (les deux sont des word chars),
 // d'ou le pattern explicite ([ap])\.?\s*m?\.? qui matche colle OU detache.
-const MERIDIEM_PART = /^(\d{1,2})(?::(\d{2}))?\s*(?:([ap])\.?\s*m?\.?)?/;
+const MERIDIEM_PART = /^(\d{1,2})(?:[:.h](\d{2}))?\s*(?:([ap])\.?\s*m?\.?)?/;
 export function normTime(t) {
   const s = (t || '').toLowerCase().trim();
   const parts = s.split(/[-–]/);
