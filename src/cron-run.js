@@ -20,6 +20,22 @@ const EXIT_RELINK_REQUIRED = 75;
 let client = null;
 let stopping = false;
 
+// Publie le code de liaison dans Redis pour qu'il soit lisible immediatement
+// (les logs GitHub Actions ne sont accessibles qu'apres la fin du job).
+async function publishPairingCode(code) {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return;
+  try {
+    const { Redis } = await import('@upstash/redis');
+    const r = new Redis({ url, token });
+    await r.set('playa:pairing-code', code, { ex: 600 });
+    console.log('[cron] code de liaison publie dans Redis (playa:pairing-code, TTL 10min)');
+  } catch (e) {
+    console.warn('[cron] publication Redis du code echouee:', e.message);
+  }
+}
+
 async function shutdown(reason, code = 0) {
   if (stopping) return;
   stopping = true;
@@ -54,6 +70,8 @@ client = startListener({
       console.log(`  CODE DE LIAISON WHATSAPP : ${code}`);
       console.log('  Dans WhatsApp > Reglages > Appareils connectes > Lier un appareil > Lier avec numero, saisis ce code.');
       console.log('==================================================');
+      // Publie le code dans Redis (TTL 10 min) pour lecture temps-reel hors logs CI.
+      publishPairingCode(code);
       // On laisse tourner jusqu'a ready ou ready-timeout.
       return;
     }
