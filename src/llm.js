@@ -28,9 +28,15 @@ async function callGemini(prompt, { maxTokens = 800 } = {}) {
   }
 }
 
-async function callGroq(prompt, { maxTokens = 800 } = {}) {
+async function callGroq(prompt, { maxTokens = 800, image = null } = {}) {
   if (!process.env.GROQ_API_KEY) return { ok: false, reason: 'no-key' };
-  const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  // Llama 4 Scout est multimodal -> sert aussi de fallback vision (rapide, free).
+  const model = image
+    ? (process.env.GROQ_VISION_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct')
+    : (process.env.GROQ_MODEL || 'llama-3.3-70b-versatile');
+  const content = image
+    ? [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: `data:${image.mediaType};base64,${image.data}` } }]
+    : prompt;
   try {
     const r = await fetch(GROQ_URL, {
       method: 'POST',
@@ -40,7 +46,7 @@ async function callGroq(prompt, { maxTokens = 800 } = {}) {
       },
       body: JSON.stringify({
         model,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content }],
         response_format: { type: 'json_object' },
         temperature: 0,
         max_tokens: maxTokens,
@@ -49,7 +55,7 @@ async function callGroq(prompt, { maxTokens = 800 } = {}) {
     if (!r.ok) return { ok: false, reason: 'http-' + r.status };
     const data = await r.json();
     const text = data?.choices?.[0]?.message?.content || '';
-    return { ok: true, text, source: 'groq' };
+    return { ok: true, text, source: image ? 'groq-vision' : 'groq' };
   } catch (e) {
     return { ok: false, reason: e.message };
   }
@@ -114,10 +120,10 @@ export async function llmJSON(prompt, opts = {}) {
   }
 }
 
-// Vision : Gemini → OpenRouter (Groq n'a pas de vision gratuite fiable).
+// Vision : Gemini → Groq (Llama 4 Scout, rapide) → OpenRouter (lent mais free).
 export async function llmVisionJSON(prompt, image, opts = {}) {
   // Pour la vision on appelle Gemini avec l'image directement (vision.js le fait deja).
-  // Si quota Gemini down, on bascule sur OpenRouter qui a des modeles vision gratuits.
+  // Si quota Gemini down, on bascule sur Groq Scout puis OpenRouter.
   if (process.env.GEMINI_API_KEY) {
     const model = process.env.VISION_MODEL || 'gemini-2.5-flash';
     const url = `${GEMINI_URL_BASE}/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
@@ -139,7 +145,14 @@ export async function llmVisionJSON(prompt, image, opts = {}) {
       }
     } catch (e) { console.warn('[llm-vision] gemini error:', e.message); }
   }
-  // Fallback OpenRouter
+  // Fallback 1 : Groq Llama 4 Scout (multimodal, rapide, free).
+  const groq = await callGroq(prompt, { ...opts, image });
+  if (groq.ok) {
+    try { return { data: JSON.parse(groq.text), source: groq.source }; } catch { /* fall through */ }
+  } else if (groq.reason !== 'no-key') {
+    console.warn('[llm-vision] groq:', groq.reason, '— OpenRouter fallback');
+  }
+  // Fallback 2 : OpenRouter (modeles vision gratuits, plus lents).
   const result = await callOpenRouter(prompt, { ...opts, image });
   if (!result.ok) return null;
   try { return { data: JSON.parse(result.text), source: result.source }; } catch { return null; }
