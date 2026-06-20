@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normTime, mergeActivities, isFreshEvent, isInScope, isFreshActivity, mergeByTitle, titleMergeKey } from '../src/store.js';
+import { normTime, mergeActivities, isFreshEvent, isInScope, isFreshActivity, mergeByTitle, titleMergeKey, better } from '../src/store.js';
 
 // ── normTime : meridiem colle, plages, points ────────────────────────────────
 
@@ -186,4 +186,20 @@ test('mergeByTitle: jours differents ne fusionnent pas malgre meme titre', () =>
     { id: 'b', dayIndex: 5, title: 'LUSH Latin Dance Party', venue: 'Y', lastSeen: '2026-06-09T00:00:00Z', activities: [{ time: '9p', name: 'y' }] },
   ];
   assert.equal(mergeByTitle(events).length, 2);
+});
+
+// ── normTime : separateurs point / h ─────────────────────────────────────────
+test('normTime: separateurs "." et "h" pour les minutes', () => {
+  assert.equal(normTime('8.15pm'), '20:15');
+  assert.equal(normTime('8h15'), '08:15');
+  assert.equal(normTime('8:15pm'), '20:15');
+});
+
+// ── better : un titre date-prefixe ne gagne pas sur un titre recurrent ────────
+test('better: titre date-prefixe perd contre un titre propre', () => {
+  assert.equal(better('CUBANISIMO EL SOCIAL', '13th June Cubanisimo salsa social!'), 'CUBANISIMO EL SOCIAL');
+  assert.equal(better('13th June Cubanisimo salsa social!', 'CUBANISIMO EL SOCIAL'), 'CUBANISIMO EL SOCIAL');
+  assert.equal(better('20 de junio fiesta', 'Noche Latina'), 'Noche Latina');
+  // mais un titre date reste meilleur que vide.
+  assert.equal(better('', '13th June Party'), '13th June Party');
 });

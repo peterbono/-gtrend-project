@@ -61,12 +61,19 @@ async function writeMap(map) {
   fs.writeFileSync(dataFile(), JSON.stringify(map, null, 2));
 }
 
+// Un titre prefixe par une date ponctuelle ("13th June Cubanisimo...", "20 de
+// junio ...", "June 13 ...") ne doit PAS gagner sur un titre recurrent propre :
+// l'app est une vue hebdomadaire, un meme lieu/jour cumule plusieurs dates.
+const DATE_TITLE_RE = /^\s*(?:\d{1,2}(?:st|nd|rd|th)\b|\d{1,2}\s+de\s+\p{L}+|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|ene|abr|ago|dic)\w*\.?\s+\d{1,2}\b)/iu;
+
 // Heuristique : entre deux valeurs candidates pour title/venue, garde la plus informative.
-function better(a, b) {
+export function better(a, b) {
   const score = (s) => {
     if (!s) return 0;
     if (/^https?:\/\//i.test(s)) return -1;
     if (/^\s*\d{1,2}(?::\d{2})?\s*(?:[apAP]m?)?\s*$/.test(s)) return -1;
+    // Titre date-prefixe : tres bas (au-dessus de vide/url, sous tout vrai titre).
+    if (DATE_TITLE_RE.test(s)) return 1;
     return s.length;
   };
   return score(b) > score(a) ? b : a;
