@@ -4,6 +4,7 @@
 // Sert de secours pour les messages qui ne contiennent qu'une image (sans texte).
 
 import { DAY_INDEX } from './days.js';
+import { llmVisionJSON } from './llm.js';
 
 const PROMPT = `Tu lis un flyer de soirees de danse a Playa del Carmen (Mexique).
 Extrais TOUS les jours/evenements visibles. Reponds UNIQUEMENT en JSON, un tableau:
@@ -34,57 +35,35 @@ Reponds UNIQUEMENT avec le MEME format JSON (tableau d'events {day,title,venue,a
 JSON a consolider :
 `;
 
+// La vision marche tant qu'AU MOINS un provider est configure : Gemini (primaire)
+// OU OpenRouter (fallback gratuit). Ainsi, credit Google epuise = on bascule.
 export function visionEnabled() {
-  return Boolean(process.env.GEMINI_API_KEY);
+  return Boolean(process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY);
+}
+
+// La reponse JSON peut etre un tableau direct ou un objet enveloppe
+// ({events:[...]}, {eventos:[...]}, {value:[...]}) selon le provider/mode JSON.
+export function coerceEventArray(data) {
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === 'object') {
+    for (const k of ['events', 'eventos', 'evenements', 'value', 'data', 'items']) {
+      if (Array.isArray(data[k])) return data[k];
+    }
+    // Objet event unique -> tableau a un element.
+    if (data.day || data.activities) return [data];
+  }
+  return [];
 }
 
 export async function extractFromImage(base64, mediaType = 'image/jpeg') {
   if (!visionEnabled()) return [];
-  const model = process.env.VISION_MODEL || 'gemini-2.0-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
-
-  const body = {
-    contents: [
-      {
-        parts: [
-          { text: PROMPT },
-          { inline_data: { mime_type: mediaType, data: base64 } },
-        ],
-      },
-    ],
-    generationConfig: {
-      response_mime_type: 'application/json',
-      temperature: 0,
-      max_output_tokens: 1500,
-    },
-  };
-
-  let text = '[]';
-  try {
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!resp.ok) {
-      console.warn(`[vision] Gemini ${resp.status}:`, (await resp.text()).slice(0, 200));
-      return [];
-    }
-    const data = await resp.json();
-    text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
-  } catch (err) {
-    console.warn('[vision] requete Gemini echouee:', err.message);
+  // Gemini d'abord, fallback OpenRouter vision (gratuit) si quota Google epuise.
+  const result = await llmVisionJSON(PROMPT, { data: base64, mediaType }, { maxTokens: 1500 });
+  if (!result) {
+    console.warn('[vision] aucun provider n\'a repondu (quota/parse).');
     return [];
   }
-
-  const json = text.slice(text.indexOf('['), text.lastIndexOf(']') + 1);
-  let raw;
-  try {
-    raw = JSON.parse(json);
-  } catch {
-    console.warn('[vision] reponse non parsable:', text.slice(0, 120));
-    return [];
-  }
+  const raw = coerceEventArray(result.data);
   const events = raw
     .filter((e) => e && DAY_INDEX[e.day?.toUpperCase?.()] !== undefined)
     .map((e) => ({
@@ -99,7 +78,8 @@ export async function extractFromImage(base64, mediaType = 'image/jpeg') {
   return consolidateEvents(events);
 }
 
-// 2e passe Gemini : relit l'extraction et consolide doublons / sur-decoupage.
+// 2e passe : relit l'extraction et consolide doublons / sur-decoupage.
+// Passe par llmJSON (Gemini → Groq → OpenRouter) pour rester resilient au quota.
 // Skip si rien a consolider (aucun event avec >1 activite). Garde-fous : la
 // sortie ne doit jamais perdre un jour ni vider les activites d'un event -> sinon
 // on retourne l'extraction brute inchangee.
@@ -107,44 +87,26 @@ export async function consolidateEvents(events) {
   if (!visionEnabled() || !events.length) return events;
   if (!events.some((e) => (e.activities || []).length > 1)) return events;
 
-  const model = process.env.VISION_MODEL || 'gemini-2.0-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
   const payload = events.map((e) => ({ day: e.day, title: e.title, venue: e.venue, activities: e.activities }));
-  const body = {
-    contents: [{ parts: [{ text: VERIFY_PROMPT + JSON.stringify(payload) }] }],
-    generationConfig: { response_mime_type: 'application/json', temperature: 0, max_output_tokens: 1500 },
-  };
+  const { llmJSON } = await import('./llm.js');
+  const result = await llmJSON(VERIFY_PROMPT + JSON.stringify(payload), { maxTokens: 1500 });
+  if (!result) return events;
+  const cleaned = coerceEventArray(result.data);
+  if (!cleaned.length) return events;
 
-  try {
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!resp.ok) return events;
-    const data = await resp.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const json = text.slice(text.indexOf('['), text.lastIndexOf(']') + 1);
-    const cleaned = JSON.parse(json);
-    if (!Array.isArray(cleaned)) return events;
+  const mapped = cleaned
+    .filter((e) => e && DAY_INDEX[e.day?.toUpperCase?.()] !== undefined)
+    .map((e) => ({
+      day: e.day.toUpperCase(),
+      dayIndex: DAY_INDEX[e.day.toUpperCase()],
+      title: e.title || '',
+      venue: e.venue ?? null,
+      mapUrl: e.mapUrl ?? null,
+      activities: Array.isArray(e.activities) ? e.activities : [],
+    }));
 
-    const mapped = cleaned
-      .filter((e) => e && DAY_INDEX[e.day?.toUpperCase?.()] !== undefined)
-      .map((e) => ({
-        day: e.day.toUpperCase(),
-        dayIndex: DAY_INDEX[e.day.toUpperCase()],
-        title: e.title || '',
-        venue: e.venue ?? null,
-        mapUrl: e.mapUrl ?? null,
-        activities: Array.isArray(e.activities) ? e.activities : [],
-      }));
-
-    // Garde-fous : pas moins d'events, et aucun event reel vide apres coup.
-    if (mapped.length < events.length) return events;
-    if (mapped.some((e) => e.activities.length === 0)) return events;
-    return mapped;
-  } catch (err) {
-    console.warn('[vision] consolidation echouee, fallback extraction brute:', err.message);
-    return events;
-  }
+  // Garde-fous : pas moins d'events, et aucun event reel vide apres coup.
+  if (mapped.length < events.length) return events;
+  if (mapped.some((e) => e.activities.length === 0)) return events;
+  return mapped;
 }

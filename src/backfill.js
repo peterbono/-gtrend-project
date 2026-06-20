@@ -112,7 +112,14 @@ client.on('ready', async () => {
                 events = await extractFromImage(media.data, media.mimetype);
                 source = 'vision';
                 visionCalls += 1;
-                if (cache) await cache.set(`vis:${msgId}`, '1', { ex: 60 * 60 * 24 * 30 });
+                // Cache long (30j) UNIQUEMENT si on a extrait quelque chose. Un
+                // echec/vide (quota, flyer illisible) -> TTL court (2j) pour etre
+                // retente plus tard (ex via le fallback OpenRouter) sans boucler.
+                if (cache) {
+                  await cache.set(`vis:${msgId}`, events.length ? '1' : '0', {
+                    ex: events.length ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 2,
+                  });
+                }
               }
             }
           }
