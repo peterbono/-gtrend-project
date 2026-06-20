@@ -275,3 +275,13 @@ test('garde-fou: event jour+lieu SANS titre ni heure reste jete (pas de bruit)',
 📍 Some Venue`;
   assert.equal(parseMessage(msg).length, 0);
 });
+
+test('anti-bruit: event sans heure et titre NON-danse est jete', () => {
+  const foot = `SÁBADO – Representa a tu bandera en este Mundial!
+📍 Mexcalli
+$150 MXN`;
+  assert.equal(parseMessage(foot).length, 0);
+  const fiesta = `SÁBADO ¡Estamos de fiesta! 🎉
+📍 Playa del Carmen`;
+  assert.equal(parseMessage(fiesta).length, 0);
+});

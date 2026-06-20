@@ -139,6 +139,10 @@ const TITLE_FILLER_RE = /\b(pr[oó]ximo?|este|esta|next|this|every|cada|todos\s+
 const DATE_LINE_RE = /^\s*(?:el\s+|le\s+)?\d{1,2}(?:\s*(?:de|of)\s+)?\s*(?:ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|january|february|march|april|may|june|july|august|september|october|november|december)\w*\s*\d{0,4}\s*$/i;
 // Lignes-parasites a ne jamais retenir comme titre ("English Below", "Ver abajo").
 const NOISE_TITLE_RE = /^\s*(?:english\s+below|espa[nñ]ol\s+(?:abajo|below)|below|abajo|ver\s+abajo|see\s+below|info|menu)\s*$/i;
+// Pertinence danse : un event SANS horaire n'est synthetise que si son titre
+// evoque la danse (workshop bachazouk OUI ; "match du Mundial" / "Estamos de
+// fiesta" NON) -> evite de polluer le feed avec des annonces non-danse.
+const DANCE_RE = /\b(salsa|bachata|bachazouk|zouk|kizomba|kiz|merengue|cumbia|timba|son\s+cubano|cha[\s-]?cha|tango|forr[oó]|samba|reggaeton|lady\s*style|rueda|casino|social(?:es)?|baile|danc(?:e|ing)|workshop|taller|clase|class|pr[aá]ctica|practice|latin[oa]?|noche\s+latina|fiesta\s+latina)\b/i;
 
 function looksLikeTitle(s) {
   if (!s) return false;
@@ -180,7 +184,12 @@ export function parseMessage(text) {
     // Event annonce SANS horaire (workshop : "Sábado, Zona: X, $250") : si on a un
     // vrai lieu ET un vrai titre mais aucune activite, on synthetise une activite
     // sans heure depuis le titre — sinon la regle "lieu + activite" le jetterait.
-    if (!current.activities.length && hasRealVenue && looksLikeTitle(current.title)) {
+    if (
+      !current.activities.length &&
+      hasRealVenue &&
+      looksLikeTitle(current.title) &&
+      DANCE_RE.test(current.title)
+    ) {
       current.activities.push({ time: '', name: current.title });
     }
     const hasActivity = current.activities.length > 0;
