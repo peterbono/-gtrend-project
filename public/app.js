@@ -187,7 +187,12 @@ function isSocial(a) {
   return true;
 }
 
-function eventHasSocial(ev) { return (ev.activities || []).some(isSocial); }
+// Un flyer nomme souvent la soiree dans le titre ("SauceLatin Night") sans
+// repeter un mot-cle social/fiesta dans chaque ligne d'activite (juste le
+// lineup DJ) : il faut donc aussi tester le titre, pas seulement les activites.
+function eventHasSocial(ev) {
+  return (ev.activities || []).some(isSocial) || isSocial({ name: ev.title });
+}
 
 // Events visibles selon le toggle Soirees/Tout + le filtre styles (cumulatifs).
 function visibleEvents() {

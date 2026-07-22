@@ -36,9 +36,9 @@ function stripFillerPrefix(s) {
 // Ex: "6p", "9-10p", "9p-1a", "7pm", "7-11p", "21:00", "5:00 PM – 7:30 PM", "8:00p.m.".
 // Les points de "a.m."/"p.m." sont consommes pour ne pas laisser ".m." dans le nom.
 // (?!\w) au lieu de \b : apres un "." final il n'y a pas de word boundary.
-// Minutes : separateur ":" mais aussi "." (8.15pm) et "h" (8h15), frequents sur
-// les flyers latino/europeens.
-const TIME_RE = /^(\d{1,2}(?:[:.h]\d{2})?\s*(?:[ap]\.?m?\.?)?(?:\s*[-–a]\s*\d{1,2}(?:[:.h]\d{2})?\s*(?:[ap]\.?m?\.?)?)?)(?!\w)/i;
+// Minutes : separateur ":" mais aussi "." (8.15pm), "h" (8h15) et "," (8,15pm,
+// virgule decimale espagnole), frequents sur les flyers latino/europeens.
+const TIME_RE = /^(\d{1,2}(?:[:.,h]\d{2})?\s*(?:[ap]\.?m?\.?)?(?:\s*[-–a]\s*\d{1,2}(?:[:.,h]\d{2})?\s*(?:[ap]\.?m?\.?)?)?)(?!\w)/i;
 
 // Une DUREE n'est pas une heure de debut : "1.30 hs de clase", "2 horas de
 // practica", "90 min de social". Motif = nombre (+separateur) + unite de duree
