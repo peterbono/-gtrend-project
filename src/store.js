@@ -61,6 +61,35 @@ async function writeMap(map) {
   fs.writeFileSync(dataFile(), JSON.stringify(map, null, 2));
 }
 
+// Flyer image brute (source "vision"), pour le CTA "voir la source" du site.
+// TTL alignee sur MAX_EVENT_AGE_DAYS : meme duree de vie que l'event lui-meme
+// (refresh a chaque re-capture), donc jamais d'accumulation en storage — un
+// flyer dont l'event a expire disparait de Redis tout seul. Redis-only : pas
+// stocke en mode fichier local (dev), pas critique hors prod.
+const FLYER_PREFIX = 'flyer:';
+const FLYER_TTL_SECONDS = MAX_EVENT_AGE_DAYS * 24 * 60 * 60;
+
+export async function saveFlyerImage(msgId, { data, mimetype }) {
+  if (!useRedis || process.env.PLAYA_DATA_FILE || !msgId || !data) return;
+  try {
+    const r = await redis();
+    await r.set(`${FLYER_PREFIX}${msgId}`, { data, mimetype: mimetype || 'image/jpeg' }, { ex: FLYER_TTL_SECONDS });
+  } catch (err) {
+    console.warn('[store] saveFlyerImage echouee :', err.message);
+  }
+}
+
+export async function getFlyerImage(msgId) {
+  if (!useRedis || !msgId) return null;
+  try {
+    const r = await redis();
+    return (await r.get(`${FLYER_PREFIX}${msgId}`)) || null;
+  } catch (err) {
+    console.warn('[store] getFlyerImage echouee :', err.message);
+    return null;
+  }
+}
+
 // Un titre prefixe par une date ponctuelle ("13th June Cubanisimo...", "20 de
 // junio ...", "June 13 ...") ne doit PAS gagner sur un titre recurrent propre :
 // l'app est une vue hebdomadaire, un meme lieu/jour cumule plusieurs dates.
@@ -318,6 +347,9 @@ function mergeEvent(prev, incoming, meta) {
     // recent : c'est le dernier message qui a confirme/mis a jour cet event.
     msgId: meta.msgId ?? prev.msgId ?? null,
     chatId: meta.chatId ?? prev.chatId ?? null,
+    // Texte brut du message source (source "text" uniquement) : sert au CTA
+    // "voir la source" cote site, expose tel quel (deja public sur le groupe).
+    rawText: meta.rawText ?? prev.rawText ?? null,
   };
 }
 
@@ -379,6 +411,7 @@ export async function upsertMany(events, meta = {}) {
         source: meta.source || 'text',
         msgId: meta.msgId ?? null,
         chatId: meta.chatId ?? null,
+        rawText: meta.rawText ?? null,
         firstSeen: now,
         lastSeen: now,
       };
@@ -480,9 +513,12 @@ export function mergeByTitle(events) {
 }
 
 // msgId/chatId sont des identifiants internes WhatsApp (cf mergeEvent), utiles
-// pour scripts/lookup-message.js mais pas destines a l'API publique.
+// pour scripts/lookup-message.js mais pas destines a l'API publique. Pour un
+// event source "vision", msgId sert quand meme a construire l'URL publique du
+// flyer (le flyer lui-meme est deja public sur le groupe WhatsApp).
 function stripInternal(ev) {
   const { msgId, chatId, ...pub } = ev;
+  if (ev.source === 'vision' && msgId) pub.flyerUrl = `/api/flyer?id=${encodeURIComponent(msgId)}`;
   return pub;
 }
 

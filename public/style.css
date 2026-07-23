@@ -612,16 +612,6 @@ main {
   align-items: center;
   gap: 12px;
 }
-/* Box-lien : ouvre l'itineraire du lieu. Couleur/soulignement neutralises. */
-a.social-box.is-link {
-  text-decoration: none;
-  color: inherit;
-  transition: background 0.18s, border-color 0.18s;
-}
-@media (hover: hover) {
-  a.social-box.is-link:hover { background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.32); }
-}
-a.social-box.is-link:hover .sb-arrow { background: rgba(255,255,255,0.28); }
 .social-box .sb-meta { display: flex; flex-direction: column; gap: 2px; }
 .social-box .sb-label {
   font-size: 0.7rem;
@@ -641,16 +631,27 @@ a.social-box.is-link:hover .sb-arrow { background: rgba(255,255,255,0.28); }
   font-weight: 600;
   opacity: 0.92;
 }
-.social-box .sb-arrow {
+/* Actions tertiaires : itineraire (pin) + source WhatsApp (oeil), badges
+   circulaires independants -- deux <a> distincts, jamais imbriques. */
+.social-box .sb-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.social-box .sb-action {
   width: 32px;
   height: 32px;
   border-radius: 50%;
   background: rgba(255,255,255,0.16);
   display: flex; align-items: center; justify-content: center;
-  font-weight: 800;
   flex-shrink: 0;
+  transition: background 0.18s, border-color 0.18s;
 }
-.social-box .sb-pin-icon {
+@media (hover: hover) {
+  .social-box .sb-action:hover { background: rgba(255,255,255,0.28); }
+}
+.social-box .sb-action-icon {
   width: 16px;
   height: 16px;
 }

@@ -1,6 +1,6 @@
 import pkg from 'whatsapp-web.js';
 import { parseMessage } from './parser.js';
-import { upsertMany, storageMode } from './store.js';
+import { upsertMany, saveFlyerImage, storageMode } from './store.js';
 import { extractFromImage, visionEnabled } from './vision.js';
 import { matchesAnyGroup, parseGroupNames } from './group-match.js';
 
@@ -57,12 +57,14 @@ export function startListener({ onQr, onPairingCode, onReady } = {}) {
 
       let events = parseMessage(msg.body || '');
       let source = 'text';
+      let flyerMedia = null;
 
       if (events.length === 0 && msg.hasMedia && visionEnabled()) {
         const media = await msg.downloadMedia();
         if (media && media.mimetype?.startsWith('image/')) {
           events = await extractFromImage(media.data, media.mimetype);
           source = 'vision';
+          if (events.length) flyerMedia = media;
         }
       }
 
@@ -72,7 +74,9 @@ export function startListener({ onQr, onPairingCode, onReady } = {}) {
         // plutot que de planter tout le traitement du message.
         const msgId = msg.id?._serialized ?? msg.id?.$1 ?? null;
         const chatId = chat.id?._serialized ?? chat.id?.$1 ?? null;
-        await upsertMany(events, { source, msgId, chatId });
+        const rawText = source === 'text' ? msg.body || null : null;
+        await upsertMany(events, { source, msgId, chatId, rawText });
+        if (flyerMedia && msgId) await saveFlyerImage(msgId, { data: flyerMedia.data, mimetype: flyerMedia.mimetype });
         console.log(`📥 ${events.length} evenement(s) [${source}] : ${events.map((e) => e.day).join(', ')}`);
       }
     } catch (err) {

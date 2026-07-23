@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { allEvents, eventsForDay } from './store.js';
+import { allEvents, eventsForDay, getFlyerImage } from './store.js';
 import { geocodeVenue, geocodeManyViaGemini } from './geocode.js';
 import { DAY_LABEL_FR } from './days.js';
 
@@ -29,6 +29,16 @@ export function createApp() {
       return res.json({ dayIndex: idx, dayLabel: DAY_LABEL_FR[idx], events: (await eventsForDay(idx)).filter(nonEmpty) });
     }
     res.json({ days: DAY_LABEL_FR, events: (await allEvents()).filter(nonEmpty) });
+  });
+
+  app.get('/api/flyer', async (req, res) => {
+    const { id } = req.query;
+    if (!id) return res.status(400).json({ error: 'id required' });
+    const flyer = await getFlyerImage(String(id));
+    if (!flyer) return res.status(404).json({ error: 'not found' });
+    res.setHeader('content-type', flyer.mimetype || 'image/jpeg');
+    res.setHeader('cache-control', 'public, max-age=3600');
+    res.send(Buffer.from(flyer.data, 'base64'));
   });
 
   app.get('/api/map', async (req, res) => res.json(await buildMapPayload()));

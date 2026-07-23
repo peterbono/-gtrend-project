@@ -3,7 +3,7 @@
 import 'dotenv/config';
 import pkg from 'whatsapp-web.js';
 import { parseMessage } from './parser.js';
-import { upsertMany, storageMode } from './store.js';
+import { upsertMany, saveFlyerImage, storageMode } from './store.js';
 import { extractFromImage, visionEnabled } from './vision.js';
 import { findGroups, parseGroupNames } from './group-match.js';
 
@@ -101,6 +101,7 @@ client.on('ready', async () => {
         try {
           let events = parseMessage(msg.body || '');
           let source = 'text';
+          let flyerMedia = null;
           const msgId = msg.id?._serialized ?? msg.id?.$1 ?? null;
           const chatId = group.id?._serialized ?? group.id?.$1 ?? null;
 
@@ -114,6 +115,7 @@ client.on('ready', async () => {
                 events = await extractFromImage(media.data, media.mimetype);
                 source = 'vision';
                 visionCalls += 1;
+                if (events.length) flyerMedia = media;
                 // Cache long (30j) UNIQUEMENT si on a extrait quelque chose. Un
                 // echec/vide (quota, flyer illisible) -> TTL court (2j) pour etre
                 // retente plus tard (ex via le fallback OpenRouter) sans boucler.
@@ -127,7 +129,9 @@ client.on('ready', async () => {
           }
 
           if (events.length) {
-            await upsertMany(events, { source, msgId, chatId });
+            const rawText = source === 'text' ? msg.body || null : null;
+            await upsertMany(events, { source, msgId, chatId, rawText });
+            if (flyerMedia && msgId) await saveFlyerImage(msgId, { data: flyerMedia.data, mimetype: flyerMedia.mimetype });
             captured += events.length;
             console.log(`  📥 ${events.length} [${source}] : ${events.map((e) => e.day).join(', ')}`);
           }

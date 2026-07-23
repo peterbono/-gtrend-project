@@ -550,21 +550,30 @@ function renderCard(ev) {
     : '';
 
   // Toutes les soirees, pas seulement la premiere (certains venues ont
-  // pre-party + social, ou deux socials successifs). La box est cliquable ->
-  // itineraire du lieu (icone pin, remplace l'ancienne fleche ↗ qui ne
-  // rendait pas explicite qu'on ouvre une carte). Sans lieu : box
-  // non-cliquable, sans icone (pas de fausse affordance).
-  const SB_PIN_SVG = '<svg class="sb-pin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
+  // pre-party + social, ou deux socials successifs). Deux actions tertiaires
+  // possibles par box : pin -> itineraire du lieu, oeil -> message WhatsApp
+  // source (flyer image ou texte brut), pour verifier l'info independamment
+  // du parsing. Box en <div> (plus un <a> unique) car deux actions
+  // cliquables distinctes ne peuvent pas s'imbriquer dans un seul lien.
+  const SB_PIN_SVG = '<svg class="sb-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
+  const SB_EYE_SVG = '<svg class="sb-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+  // Flyer image (source vision) prioritaire ; sinon texte brut du message
+  // (source text) ouvert comme document texte -- pas de lightbox custom,
+  // le navigateur affiche nativement les deux dans un nouvel onglet.
+  const sourceHref = ev.flyerUrl
+    ? ev.flyerUrl
+    : ev.rawText
+      ? `data:text/plain;charset=utf-8,${encodeURIComponent(ev.rawText)}`
+      : null;
   const socialHTML = socials
     .map((s) => {
-      const inner = `<div class="sb-meta">
+      const meta = `<div class="sb-meta">
           <span class="sb-label">Party</span>
           <span class="sb-time">${escapeHTML(fmtTime(s.time))}</span>
           <span class="sb-title">${escapeHTML(s.name || 'Social Dance')}</span>
-        </div>${venueHref ? `<span class="sb-arrow" aria-hidden="true">${SB_PIN_SVG}</span>` : ''}`;
-      return venueHref
-        ? `<a class="social-box is-link" href="${escapeHTML(venueHref)}" target="_blank" rel="noopener" aria-label="${escapeHTML(s.name || 'Social Dance')} — directions${venueLabel ? ` to ${escapeHTML(venueLabel)}` : ''}">${inner}</a>`
-        : `<div class="social-box">${inner}</div>`;
+        </div>`;
+      const actions = `${venueHref ? `<a class="sb-action" href="${escapeHTML(venueHref)}" target="_blank" rel="noopener" aria-label="Directions${venueLabel ? ` to ${escapeHTML(venueLabel)}` : ''}">${SB_PIN_SVG}</a>` : ''}${sourceHref ? `<a class="sb-action" href="${escapeHTML(sourceHref)}" target="_blank" rel="noopener" aria-label="View original WhatsApp post">${SB_EYE_SVG}</a>` : ''}`;
+      return `<div class="social-box">${meta}${actions ? `<div class="sb-actions">${actions}</div>` : ''}</div>`;
     })
     .join('');
 
