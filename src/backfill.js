@@ -101,10 +101,12 @@ client.on('ready', async () => {
         try {
           let events = parseMessage(msg.body || '');
           let source = 'text';
+          const msgId = msg.id?._serialized ?? msg.id?.$1 ?? null;
+          const chatId = group.id?._serialized ?? group.id?.$1 ?? null;
 
           if (events.length === 0 && msg.hasMedia && visionEnabled()) {
-            const msgId = msg.id?._serialized || msg.id?.id || String(msg.id);
-            if (cache && (await cache.get(`vis:${msgId}`))) {
+            const visKey = msgId || msg.id?.id || String(msg.id);
+            if (cache && (await cache.get(`vis:${visKey}`))) {
               skipped += 1;
             } else {
               const media = await msg.downloadMedia();
@@ -116,7 +118,7 @@ client.on('ready', async () => {
                 // echec/vide (quota, flyer illisible) -> TTL court (2j) pour etre
                 // retente plus tard (ex via le fallback OpenRouter) sans boucler.
                 if (cache) {
-                  await cache.set(`vis:${msgId}`, events.length ? '1' : '0', {
+                  await cache.set(`vis:${visKey}`, events.length ? '1' : '0', {
                     ex: events.length ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 2,
                   });
                 }
@@ -125,7 +127,7 @@ client.on('ready', async () => {
           }
 
           if (events.length) {
-            await upsertMany(events, { source });
+            await upsertMany(events, { source, msgId, chatId });
             captured += events.length;
             console.log(`  📥 ${events.length} [${source}] : ${events.map((e) => e.day).join(', ')}`);
           }

@@ -67,7 +67,12 @@ export function startListener({ onQr, onPairingCode, onReady } = {}) {
       }
 
       if (events.length) {
-        await upsertMany(events, { source });
+        // Fallback $1 : la cle "_serialized" est parfois renommee par WhatsApp
+        // Web (voir patch-whatsapp-web.js). Sans elle, msgId/chatId restent null
+        // plutot que de planter tout le traitement du message.
+        const msgId = msg.id?._serialized ?? msg.id?.$1 ?? null;
+        const chatId = chat.id?._serialized ?? chat.id?.$1 ?? null;
+        await upsertMany(events, { source, msgId, chatId });
         console.log(`📥 ${events.length} evenement(s) [${source}] : ${events.map((e) => e.day).join(', ')}`);
       }
     } catch (err) {

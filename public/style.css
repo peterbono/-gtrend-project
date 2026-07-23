@@ -650,6 +650,10 @@ a.social-box.is-link:hover .sb-arrow { background: rgba(255,255,255,0.28); }
   font-weight: 800;
   flex-shrink: 0;
 }
+.social-box .sb-pin-icon {
+  width: 16px;
+  height: 16px;
+}
 
 /* ── NOW LINE (only on today's card) ───────────────────── */
 .now-line {

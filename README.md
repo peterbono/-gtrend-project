@@ -60,6 +60,16 @@ VISION_MODEL=gemini-2.0-flash    # optionnel
 npm test    # teste le parser sur de vrais messages du groupe
 ```
 
+## Vérifier un event contre son message WhatsApp source
+
+Chaque event stocké garde en interne (`msgId`, pas exposé sur `/api/events`) une
+référence au dernier message WhatsApp qui l'a confirmé. Utile quand un event
+semble mal parsé et qu'on veut voir le texte brut original sans deviner :
+
+1. Récupère le `msgId` de l'event en question dans Redis (`playa:events`).
+2. Lance le workflow **Lookup WhatsApp message** (`workflow_dispatch`) avec ce `msgId` en input.
+3. Le job réutilise la session WhatsApp du cron (lecture seule) et affiche le message brut dans les logs du run.
+
 ## 🆓 Hébergement gratuit via cron GitHub Actions (recommandé)
 
 Le listener WhatsApp tourne **par fenêtres de ~8 min, toutes les heures**, déclenché par

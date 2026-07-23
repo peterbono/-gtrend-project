@@ -313,6 +313,11 @@ function mergeEvent(prev, incoming, meta) {
     price: prev.price || incoming.price || null,
     activities: mergeActivities(prev.activities, incoming.activities),
     source: prev.source === 'vision' || meta.source === 'vision' ? 'vision' : (prev.source || meta.source || 'text'),
+    // Trace vers le message WhatsApp source, pour retrouver le texte brut a des
+    // fins de verif/debug (cf scripts/lookup-message.js). On garde le plus
+    // recent : c'est le dernier message qui a confirme/mis a jour cet event.
+    msgId: meta.msgId ?? prev.msgId ?? null,
+    chatId: meta.chatId ?? prev.chatId ?? null,
   };
 }
 
@@ -372,6 +377,8 @@ export async function upsertMany(events, meta = {}) {
         ...ev,
         activities: mergeActivities(incomingActs, []),
         source: meta.source || 'text',
+        msgId: meta.msgId ?? null,
+        chatId: meta.chatId ?? null,
         firstSeen: now,
         lastSeen: now,
       };
@@ -472,6 +479,13 @@ export function mergeByTitle(events) {
   return [...merged, ...passthrough];
 }
 
+// msgId/chatId sont des identifiants internes WhatsApp (cf mergeEvent), utiles
+// pour scripts/lookup-message.js mais pas destines a l'API publique.
+function stripInternal(ev) {
+  const { msgId, chatId, ...pub } = ev;
+  return pub;
+}
+
 export async function allEvents() {
   const map = await readMap();
   const now = Date.now();
@@ -482,7 +496,7 @@ export async function allEvents() {
       activities: (ev.activities || []).filter((a) => isFreshActivity(a, ev.lastSeen, now)),
     }))
     .filter((ev) => (ev.activities || []).length > 0);
-  return mergeByTitle(events).sort((a, b) => a.dayIndex - b.dayIndex);
+  return mergeByTitle(events).sort((a, b) => a.dayIndex - b.dayIndex).map(stripInternal);
 }
 
 export async function eventsForDay(dayIndex) {

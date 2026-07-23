@@ -551,16 +551,17 @@ function renderCard(ev) {
 
   // Toutes les soirees, pas seulement la premiere (certains venues ont
   // pre-party + social, ou deux socials successifs). La box est cliquable ->
-  // itineraire du lieu (la fleche ↗ remplace l'ancien ▶ qui faisait croire a un
-  // lecteur audio). Sans lieu : box non-cliquable, sans fleche (pas de fausse
-  // affordance).
+  // itineraire du lieu (icone pin, remplace l'ancienne fleche ↗ qui ne
+  // rendait pas explicite qu'on ouvre une carte). Sans lieu : box
+  // non-cliquable, sans icone (pas de fausse affordance).
+  const SB_PIN_SVG = '<svg class="sb-pin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
   const socialHTML = socials
     .map((s) => {
       const inner = `<div class="sb-meta">
           <span class="sb-label">Party</span>
           <span class="sb-time">${escapeHTML(fmtTime(s.time))}</span>
           <span class="sb-title">${escapeHTML(s.name || 'Social Dance')}</span>
-        </div>${venueHref ? '<span class="sb-arrow" aria-hidden="true">↗</span>' : ''}`;
+        </div>${venueHref ? `<span class="sb-arrow" aria-hidden="true">${SB_PIN_SVG}</span>` : ''}`;
       return venueHref
         ? `<a class="social-box is-link" href="${escapeHTML(venueHref)}" target="_blank" rel="noopener" aria-label="${escapeHTML(s.name || 'Social Dance')} — directions${venueLabel ? ` to ${escapeHTML(venueLabel)}` : ''}">${inner}</a>`
         : `<div class="social-box">${inner}</div>`;

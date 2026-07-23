@@ -1,0 +1,58 @@
+# Lookup ponctuel : retrouve le texte brut d'un message WhatsApp source a
+# partir d'un msgId stocke sur un event (cf store.js). Lecture seule (ne
+# sauvegarde pas de nouveau cache de session).
+#
+# Meme concurrency group que le cron listener : evite deux instances
+# Puppeteer connectees simultanement avec la meme session WhatsApp (risque
+# de kick/invalidation cote WhatsApp).
+
+name: Lookup WhatsApp message
+
+on:
+  workflow_dispatch:
+    inputs:
+      msg_id:
+        description: "msgId source (champ msgId d'un event, ex: false_1203...@g.us_3EB0...)"
+        required: true
+
+concurrency:
+  group: whatsapp-listener
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  lookup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci --omit=dev
+
+      - name: Restore WhatsApp session cache
+        id: restore-session
+        uses: actions/cache/restore@v4
+        with:
+          path: .wwebjs_auth
+          key: wwebjs-auth-lookup-noop
+          restore-keys: |
+            wwebjs-auth-
+
+      - name: Lookup message
+        env:
+          MSG_ID: ${{ inputs.msg_id }}
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
+          READY_TIMEOUT_SECONDS: '90'
+        run: |
+          if [ -z "${{ steps.restore-session.outputs.cache-matched-key }}" ]; then
+            echo "::error::Aucune session .wwebjs_auth en cache — le cron listener doit avoir tourne au moins une fois."
+            exit 1
+          fi
+          node scripts/lookup-message.js
