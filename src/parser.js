@@ -144,12 +144,19 @@ const NOISE_TITLE_RE = /^\s*(?:english\s+below|espa[nñ]ol\s+(?:abajo|below)|bel
 // fiesta" NON) -> evite de polluer le feed avec des annonces non-danse.
 const DANCE_RE = /\b(salsa|bachata|bachazouk|zouk|kizomba|kiz|merengue|cumbia|timba|son\s+cubano|cha[\s-]?cha|tango|forr[oó]|samba|reggaeton|lady\s*style|rueda|casino|social(?:es)?|baile|danc(?:e|ing)|workshop|taller|clase|class|pr[aá]ctica|practice|latin[oa]?|noche\s+latina|fiesta\s+latina)\b/i;
 
+// Un titre reduit a un seul petit mot de liaison ("y", "and", "de"...) n'est
+// jamais un vrai titre : c'est toujours un residu de DAY_WORDS_RE qui a
+// mange deux noms de jour de part et d'autre d'une conjonction ("Lunes y
+// Miercoles" -> "y").
+const BARE_CONNECTOR_RE = /^[a-zàáéíóúñ]{1,3}$/i;
+
 function looksLikeTitle(s) {
   if (!s) return false;
   if (ONLY_URL_RE.test(s)) return false;
   if (ONLY_TIME_RE.test(s)) return false;
   if (DATE_LINE_RE.test(s)) return false;
   if (NOISE_TITLE_RE.test(s)) return false;
+  if (BARE_CONNECTOR_RE.test(s)) return false;
   return true;
 }
 
@@ -289,6 +296,17 @@ export function parseMessage(text) {
       continue;
     }
 
+    // Une ligne qui COMMENCE par une heure valide est une activite, meme si
+    // elle contient aussi un mot-cle promo ("8,15pm- ...clase es 2x1") : le
+    // check prix ne s'applique qu'aux lignes SANS heure en tete, sinon
+    // "8,15pm- Lleva alguien nuevo y clase es 2x1" finit a la fois en price
+    // ET en fausse classe "Lleva alguien nuevo y clase es 2x1".
+    const t = parseTime(line);
+    if (t) {
+      current.activities.push(t);
+      continue;
+    }
+
     // Prix : on capture le premier prix non-nul rencontre (sauf si "Free"/"Donation"
     // qui sont prioritaires sur un montant chiffre).
     const priceCandidate = parsePrice(line);
@@ -297,17 +315,6 @@ export function parseMessage(text) {
         current.price = priceCandidate;
       }
     }
-
-    const t = parseTime(line);
-    if (t) {
-      current.activities.push(t);
-      continue;
-    }
-
-    // Ligne non-horaire qui matche un motif promo ("50% Discount for locals ‼️",
-    // "2x1 drinks") : on l'a deja routee vers price ci-dessus, on ne la transforme
-    // PAS en activite avec un nom et une heure bidon.
-    if (PRICE_PROMO_RE.test(line)) continue;
   }
 
   push();

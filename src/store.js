@@ -353,12 +353,47 @@ function mergeEvent(prev, incoming, meta) {
   };
 }
 
+// Un seul message WhatsApp bilingue (flyer ES puis traduction EN a la suite)
+// produit souvent 2 "events" du parser -- meme cours, texte/venue different
+// par bloc de langue. Merge AVANT le store : meme jour + au moins un horaire
+// d'activite identique entre deux events du MEME message = memes vraie
+// annonce. Sans ca on cree 2 entrees permanentes pour 1 seule vraie classe
+// (ex: "en Academia On Stage" ES + "at Academia On Stage" EN).
+function dedupeWithinMessage(events) {
+  if (events.length < 2) return events;
+  const out = [];
+  for (const ev of events) {
+    const times = new Set((ev.activities || []).map((a) => normTime(a.time)).filter(Boolean));
+    const idx = out.findIndex((o) => o.dayIndex === ev.dayIndex && [...times].some((t) => o._times.has(t)));
+    if (idx === -1) {
+      out.push({ ...ev, _times: times });
+      continue;
+    }
+    const prev = out[idx];
+    // Meme annonce vue 2x dans le meme message (ex: traduction ES puis EN a
+    // la suite) : on garde le bloc le plus informatif EN ENTIER (titre +
+    // venue + activites), pas une union -- unir creerait 2 lignes par
+    // horaire (une par langue) au lieu d'une carte propre. Egalite -> garde
+    // le premier bloc vu (deterministe).
+    const winner = better(prev.title, ev.title) === ev.title && ev.title !== prev.title ? ev : prev;
+    const loser = winner === ev ? prev : ev;
+    out[idx] = {
+      ...winner,
+      mapUrl: winner.mapUrl || loser.mapUrl || null,
+      price: winner.price || loser.price || null,
+      _times: new Set([...prev._times, ...times]),
+    };
+  }
+  return out.map(({ _times, ...ev }) => ev);
+}
+
 // Insere ou met a jour les evenements. Dedup par (dayIndex, venueKey) : deux messages
 // referencant le meme lieu sous des noms differents se fusionnent en un seul event.
 // Index secondaire par (dayIndex, titre normalise specifique) : le meme event reel
 // poste avec une orthographe de lieu differente (venueKey divergent) atterrit
 // quand meme sur l'entry existante au lieu d'en creer une deuxieme.
-export async function upsertMany(events, meta = {}) {
+export async function upsertMany(rawEvents, meta = {}) {
+  const events = dedupeWithinMessage(rawEvents);
   if (!events.length) return [];
   const map = await readMap();
   const now = new Date().toISOString();
