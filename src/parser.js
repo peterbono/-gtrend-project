@@ -172,6 +172,10 @@ function titleFromDayLine(line) {
   t = stripMarkdown(t);
   t = t.replace(DAY_WORDS_RE, ' ').replace(TITLE_FILLER_RE, ' ').replace(/\s+/g, ' ').trim();
   t = stripFillerPrefix(t);
+  // Ponctuation orpheline : "This Monday, experience..." perd "This" (filler)
+  // et "Monday" (jour), laissant ", experience..." -- vire la ponctuation de
+  // bord qui ne veut plus rien dire une fois les mots autour retires.
+  t = t.replace(/^[,;:.\s]+|[,;:.\s]+$/g, '').trim();
   return looksLikeTitle(t) ? t : '';
 }
 
