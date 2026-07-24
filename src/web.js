@@ -31,6 +31,17 @@ export function createApp() {
     res.json({ days: DAY_LABEL_FR, events: (await allEvents()).filter(nonEmpty) });
   });
 
+  app.get('/api/source', async (req, res) => {
+    const { id } = req.query;
+    if (!id) return res.status(400).json({ error: 'id required' });
+    const events = await allEvents();
+    const ev = events.find((e) => e.id === id);
+    if (!ev?.rawText) return res.status(404).json({ error: 'not found' });
+    res.setHeader('content-type', 'text/plain; charset=utf-8');
+    res.setHeader('cache-control', 'public, max-age=3600');
+    res.send(ev.rawText);
+  });
+
   app.get('/api/flyer', async (req, res) => {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: 'id required' });

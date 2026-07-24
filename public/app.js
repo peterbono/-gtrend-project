@@ -558,12 +558,14 @@ function renderCard(ev) {
   const SB_PIN_SVG = '<svg class="sb-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
   const SB_EYE_SVG = '<svg class="sb-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
   // Flyer image (source vision) prioritaire ; sinon texte brut du message
-  // (source text) ouvert comme document texte -- pas de lightbox custom,
-  // le navigateur affiche nativement les deux dans un nouvel onglet.
+  // (source text) servi par /api/source -- pas de lightbox custom, le
+  // navigateur affiche nativement les deux dans un nouvel onglet. NB: pas de
+  // data: URL ici, Chrome bloque la navigation target="_blank" vers une
+  // data: URL (mitigation anti-tabnabbing), le lien s'ouvrait sur un onglet vide.
   const sourceHref = ev.flyerUrl
     ? ev.flyerUrl
     : ev.rawText
-      ? `data:text/plain;charset=utf-8,${encodeURIComponent(ev.rawText)}`
+      ? `/api/source?id=${encodeURIComponent(ev.id)}`
       : null;
   const socialHTML = socials
     .map((s) => {

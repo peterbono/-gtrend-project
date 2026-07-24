@@ -130,8 +130,9 @@ client.on('ready', async () => {
 
           if (events.length) {
             const rawText = source === 'text' ? msg.body || null : null;
-            await upsertMany(events, { source, msgId, chatId, rawText });
-            if (flyerMedia && msgId) await saveFlyerImage(msgId, { data: flyerMedia.data, mimetype: flyerMedia.mimetype });
+            const flyerMsgId = flyerMedia && msgId ? msgId : null;
+            await upsertMany(events, { source, msgId, chatId, rawText, flyerMsgId });
+            if (flyerMsgId) await saveFlyerImage(flyerMsgId, { data: flyerMedia.data, mimetype: flyerMedia.mimetype });
             captured += events.length;
             console.log(`  📥 ${events.length} [${source}] : ${events.map((e) => e.day).join(', ')}`);
           }

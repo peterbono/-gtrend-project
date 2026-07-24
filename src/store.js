@@ -350,6 +350,13 @@ function mergeEvent(prev, incoming, meta) {
     // Texte brut du message source (source "text" uniquement) : sert au CTA
     // "voir la source" cote site, expose tel quel (deja public sur le groupe).
     rawText: meta.rawText ?? prev.rawText ?? null,
+    // msgId d'un flyer REELLEMENT sauvegarde (cf saveFlyerImage). Distinct de
+    // `msgId`/`source` : un event "vision" peut etre re-vu via un repost texte
+    // seul (caption suffisante, pas de nouveau telechargement d'image) -- si on
+    // construisait flyerUrl depuis `msgId` general, elle pointerait vers un
+    // message qui n'a jamais eu d'image sauvegardee -> 404. On ne met a jour
+    // flyerMsgId QUE quand un flyer a vraiment ete sauvegarde ce passage-ci.
+    flyerMsgId: meta.flyerMsgId ?? prev.flyerMsgId ?? null,
   };
 }
 
@@ -447,6 +454,7 @@ export async function upsertMany(rawEvents, meta = {}) {
         msgId: meta.msgId ?? null,
         chatId: meta.chatId ?? null,
         rawText: meta.rawText ?? null,
+        flyerMsgId: meta.flyerMsgId ?? null,
         firstSeen: now,
         lastSeen: now,
       };
@@ -552,8 +560,11 @@ export function mergeByTitle(events) {
 // event source "vision", msgId sert quand meme a construire l'URL publique du
 // flyer (le flyer lui-meme est deja public sur le groupe WhatsApp).
 function stripInternal(ev) {
-  const { msgId, chatId, ...pub } = ev;
-  if (ev.source === 'vision' && msgId) pub.flyerUrl = `/api/flyer?id=${encodeURIComponent(msgId)}`;
+  const { msgId, chatId, flyerMsgId, ...pub } = ev;
+  // flyerUrl vient de flyerMsgId (flyer reellement sauvegarde), jamais de
+  // msgId/source seuls -- un event "vision" reste marque comme tel meme
+  // quand sa derniere capture est un repost texte sans nouvelle image.
+  if (flyerMsgId) pub.flyerUrl = `/api/flyer?id=${encodeURIComponent(flyerMsgId)}`;
   return pub;
 }
 
